@@ -1,0 +1,195 @@
+var GitHubSync = (function() {
+  'use strict';
+
+  var REPO_OWNER = 'Jakobus777';
+  var REPO_NAME = 'gastmeister';
+  var DATA_FILE = 'gastmeister_data.json';
+  var API_BASE = 'https://api.github.com';
+  var TOKEN_KEY = 'gastmeister_github_token';
+
+  var _token = '';
+  var _lastSHA = '';
+  var _lastETag = '';
+  var _saveDebounceTimer = null;
+  var _saveQueue = null;
+  var _isSaving = false;
+
+  // Token-Verwaltung
+  function getToken() {
+    if (!_token) {
+      _token = localStorage.getItem(TOKEN_KEY) || '';
+    }
+    return _token;
+  }
+
+  function setToken(token) {
+    _token = token || '';
+    if (_token) {
+      localStorage.setItem(TOKEN_KEY, _token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  }
+
+  function hasToken() {
+    return !!getToken();
+  }
+
+  // Headers für GitHub API
+  function _headers(extra) {
+    var h = {
+      'Authorization': 'token ' + getToken(),
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    };
+    if (extra) {
+      for (var k in extra) {
+        if (extra.hasOwnProperty(k)) {
+          h[k] = extra[k];
+        }
+      }
+    }
+    return h;
+  }
+
+  // Auth prüfen — GET /user
+  function checkAuth() {
+    return fetch(API_BASE + '/user', { headers: _headers() })
+      .then(function(r) { return r.ok; })
+      .catch(function() { return false; });
+  }
+
+  // Daten laden — GET /repos/:owner/:repo/contents/:path
+  // Returns: { data: {...parsed JSON...}, sha: "..." } oder null bei Fehler/304
+  function loadData() {
+    var url = API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + DATA_FILE;
+    var hdrs = _headers();
+    if (_lastETag) {
+      hdrs['If-None-Match'] = _lastETag;
+    }
+
+    return fetch(url, { headers: hdrs })
+      .then(function(r) {
+        if (r.status === 304) return null;
+        if (!r.ok) throw new Error('GitHub API: ' + r.status);
+        _lastETag = r.headers.get('ETag') || '';
+        return r.json();
+      })
+      .then(function(fileInfo) {
+        if (!fileInfo) return null; // 304
+        _lastSHA = fileInfo.sha;
+        // Content ist Base64-kodiert und kann Zeilenumbrüche enthalten
+        var content = atob(fileInfo.content.replace(/\n/g, ''));
+        // atob gibt Latin-1 zurück — für UTF-8 (Umlaute!) escape/decodeURIComponent verwenden
+        var decoded = decodeURIComponent(escape(content));
+        var data = JSON.parse(decoded);
+        return { data: data, sha: fileInfo.sha };
+      });
+  }
+
+  // Prüfen ob sich die Datei geändert hat (conditional GET via ETag)
+  // Returns: true wenn geändert, false wenn unverändert
+  function hasChanged() {
+    var url = API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + DATA_FILE;
+    var hdrs = _headers();
+    if (_lastETag) {
+      hdrs['If-None-Match'] = _lastETag;
+    }
+
+    return fetch(url, { headers: hdrs })
+      .then(function(r) {
+        if (r.status === 304) return false;
+        if (r.ok) {
+          _lastETag = r.headers.get('ETag') || '';
+          return r.json().then(function(fileInfo) {
+            var changed = fileInfo.sha !== _lastSHA;
+            _lastSHA = fileInfo.sha;
+            return changed;
+          });
+        }
+        return false;
+      })
+      .catch(function() { return false; });
+  }
+
+  // Daten sofort speichern — PUT /repos/:owner/:repo/contents/:path
+  // Nutzt SHA für Conflict Detection; gibt { success: true }, { conflict: true } oder { error: "..." } zurück
+  function _doSave(data) {
+    if (_isSaving) {
+      _saveQueue = data;
+      return Promise.resolve(false);
+    }
+    _isSaving = true;
+
+    var url = API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + DATA_FILE;
+    var jsonStr = JSON.stringify(data, null, 2);
+    // UTF-8 zu Base64 — encodeURIComponent/unescape für Umlaut-Handling
+    var encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+
+    var body = {
+      message: 'Auto-Sync: Buchungsdaten aktualisiert',
+      content: encoded,
+      sha: _lastSHA
+    };
+
+    return fetch(url, {
+      method: 'PUT',
+      headers: _headers(),
+      body: JSON.stringify(body)
+    })
+    .then(function(r) {
+      _isSaving = false;
+      if (r.status === 409) {
+        // Conflict — SHA stimmt nicht mehr, extern wurde gespeichert
+        console.warn('[GitHubSync] Conflict beim Speichern — lade aktuelle Version');
+        return { conflict: true };
+      }
+      if (!r.ok) throw new Error('GitHub Save: ' + r.status);
+      return r.json();
+    })
+    .then(function(result) {
+      if (result && result.conflict) return result;
+      if (result && result.content) {
+        _lastSHA = result.content.sha;
+        _lastETag = ''; // ETag nach Schreibvorgang invalidieren
+      }
+      // Ausstehenden Queue-Eintrag abarbeiten
+      if (_saveQueue) {
+        var queued = _saveQueue;
+        _saveQueue = null;
+        return _doSave(queued);
+      }
+      return { success: true };
+    })
+    .catch(function(e) {
+      _isSaving = false;
+      console.error('[GitHubSync] Speichern fehlgeschlagen:', e);
+      return { error: e.message };
+    });
+  }
+
+  // Debounced Save — führt _doSave erst 3 Sekunden nach letztem Aufruf aus
+  function saveData(data) {
+    if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
+    _saveDebounceTimer = setTimeout(function() {
+      _doSave(data);
+    }, 3000);
+  }
+
+  function getLastSHA() { return _lastSHA; }
+  function setLastSHA(sha) { _lastSHA = sha; }
+
+  // Public API
+  return {
+    getToken: getToken,
+    setToken: setToken,
+    hasToken: hasToken,
+    checkAuth: checkAuth,
+    loadData: loadData,
+    saveData: saveData,
+    hasChanged: hasChanged,
+    getLastSHA: getLastSHA,
+    setLastSHA: setLastSHA,
+    TOKEN_KEY: TOKEN_KEY
+  };
+})();

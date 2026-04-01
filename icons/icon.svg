@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#CA9B48"/>
+  <g transform="translate(256,256)" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Haus/Gebäude -->
+    <rect x="-100" y="-40" width="200" height="160" rx="8" fill="none"/>
+    <!-- Dach -->
+    <path d="M-120,-40 L0,-120 L120,-40"/>
+    <!-- Tür -->
+    <rect x="-30" y="40" width="60" height="80" rx="4" fill="none"/>
+    <!-- Türknauf -->
+    <circle cx="20" cy="80" r="6" fill="#fff"/>
+    <!-- Kreuz auf dem Dach -->
+    <line x1="0" y1="-140" x2="0" y2="-165"/>
+    <line x1="-12" y1="-155" x2="12" y2="-155"/>
+    <!-- Fenster links -->
+    <rect x="-80" y="-10" width="35" height="35" rx="3" fill="none"/>
+    <!-- Fenster rechts -->
+    <rect x="45" y="-10" width="35" height="35" rx="3" fill="none"/>
+  </g>
+</svg>

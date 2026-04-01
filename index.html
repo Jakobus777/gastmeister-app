@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Gastmeister Stift Kremsmünster</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#CA9B48" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Gastmeister" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:9847 https://*.trycloudflare.com https://api.github.com https://raw.githubusercontent.com; img-src 'self' data: blob:;" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="lucide.min.js"></script>
+  <script src="dexie.min.js"></script>
+  <script src="jspdf.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- MOBILE HEADER -->
+<header class="mobile-header">
+  <button class="hamburger-btn" aria-label="Menü öffnen" onclick="toggleMobileSidebar()">
+    <i data-lucide="menu" style="width:20px;height:20px;"></i>
+  </button>
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">
+      <i data-lucide="building" style="width:16px;height:16px;"></i>
+    </div>
+    <span>Gastmeister</span>
+  </div>
+</header>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar()" aria-hidden="true"></div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <button class="sidebar-collapse-btn" aria-label="Sidebar ein-/ausklappen">
+        <i data-lucide="panel-left" style="width:16px;height:16px;"></i>
+      </button>
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">
+          <i data-lucide="building" style="width:16px;height:16px;"></i>
+        </div>
+        <span>Gastmeister</span>
+      </div>
+    </div>
+
+    <nav aria-label="Hauptnavigation">
+    <div class="sidebar-section">
+      <a class="sidebar-item active" role="button" tabindex="0" data-page="uebersicht" data-tooltip="Übersicht" onclick="showPage('uebersicht')">
+        <i data-lucide="home" class="sidebar-icon"></i> <span>Übersicht</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="buchungen" data-tooltip="Buchungen" onclick="showPage('buchungen')">
+        <i data-lucide="book-open" class="sidebar-icon"></i> <span>Buchungen</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="kalender" data-tooltip="Kalender" onclick="showPage('kalender')">
+        <i data-lucide="calendar" class="sidebar-icon"></i> <span>Kalender</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="email" data-tooltip="E-Mail Analyse" onclick="showPage('email')">
+        <i data-lucide="mail" class="sidebar-icon"></i> <span>E-Mail Analyse</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="gaeste" data-tooltip="Gäste" onclick="showPage('gaeste')">
+        <i data-lucide="users" class="sidebar-icon"></i> <span>Gäste</span>
+      </a>
+    </div>
+    </nav>
+
+    <nav aria-label="Küche und Reinigung">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Küche & Reinigung</div>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="kuechenliste" data-tooltip="Küchenliste" onclick="showPage('kuechenliste')">
+        <i data-lucide="utensils-crossed" class="sidebar-icon"></i> <span>Küchenliste</span>
+      </a>
+    </div>
+    </nav>
+
+    <nav aria-label="Werkzeuge">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Werkzeuge</div>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="statistik" data-tooltip="Statistik" onclick="showPage('statistik')">
+        <i data-lucide="bar-chart-3" class="sidebar-icon"></i> <span>Statistik</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="spenden" data-tooltip="Spenden" onclick="showPage('spenden')">
+        <i data-lucide="heart-handshake" class="sidebar-icon"></i> <span>Spenden</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="vorlagen" data-tooltip="Vorlagen" onclick="showPage('vorlagen')">
+        <i data-lucide="file-text" class="sidebar-icon"></i> <span>Vorlagen</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="exporte" data-tooltip="Exporte" onclick="showPage('exporte')">
+        <i data-lucide="download" class="sidebar-icon"></i> <span>Exporte</span>
+      </a>
+      <a class="sidebar-item" role="button" tabindex="0" data-page="backup" data-tooltip="Backup" onclick="showPage('backup')">
+        <i data-lucide="hard-drive" class="sidebar-icon"></i> <span>Backup</span>
+      </a>
+    </div>
+    </nav>
+
+    <div class="backup-status" id="backupStatus" title="Backup-Server Status">
+      <span class="backup-dot" id="backupDot"></span>
+      <span id="backupLabel">Backup prüfen...</span>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">J</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">Jakobus Sieberer-Kefer</div>
+        <div class="sidebar-user-role">Gastmeister</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ==================== ÜBERSICHT ==================== -->
+    <div id="page-uebersicht" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">Zimmerübersicht</h1>
+        <p class="page-subtitle dashboard-date" id="dashboard-date"></p>
+        <p class="page-subtitle">Aktuelle Belegung im Stift Kremsmünster – Zimmer antippen für Details</p>
+      </div>
+
+      <div id="dailyOverview" class="mb-24"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value green">13</div>
+          <div class="stat-label">Frei</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value red">1</div>
+          <div class="stat-label">Belegt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value default">14</div>
+          <div class="stat-label">Gesamt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value blue">3</div>
+          <div class="stat-label">Anreisen (7 Tage)</div>
+        </div>
+      </div>
+
+      <div class="belegung-section">
+        <div class="section-header">
+          <h2 class="section-title">Belegungsvorschau (14 Tage)</h2>
+        </div>
+        <div class="belegung-grid" id="belegungGrid"></div>
+        <div class="belegung-legend">
+          <div class="legend-item"><div class="legend-dot frei"></div> Frei</div>
+          <div class="legend-item"><div class="legend-dot wenig"></div> Wenig</div>
+          <div class="legend-item"><div class="legend-dot halb"></div> Halb</div>
+          <div class="legend-item"><div class="legend-dot voll"></div> Voll</div>
+        </div>
+      </div>
+
+      <div class="zimmer-section">
+        <div class="zimmer-header">
+          <h2 class="section-title">Gästetrakt</h2>
+          <button class="sort-btn" aria-label="Zimmer sortieren">
+            <i data-lucide="arrow-up-down" style="width:14px;height:14px;"></i> Sortieren
+          </button>
+        </div>
+        <div class="zimmer-grid" id="zimmerGrid"></div>
+      </div>
+
+      <div class="zimmer-section">
+        <div class="zimmer-header">
+          <h2 class="section-title">Konvent (Hospes)</h2>
+        </div>
+        <div class="zimmer-grid" id="konventGrid"></div>
+      </div>
+    </div>
+
+    <!-- ==================== BUCHUNGEN ==================== -->
+    <div id="page-buchungen" class="page">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Buchungen</h1>
+            <p class="page-subtitle"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modalBuchung')">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i> Neue Buchung
+          </button>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <i data-lucide="search" style="width:16px;height:16px;color:var(--text-muted);"></i>
+        <input type="text" placeholder="Suche nach Gastname, Zimmer oder Notizen..." aria-label="Buchungen durchsuchen" />
+      </div>
+
+      <div class="filter-tabs">
+        <button class="filter-tab active">Alle</button>
+        <button class="filter-tab">Anfrage</button>
+        <button class="filter-tab">Bestätigt</button>
+        <button class="filter-tab">Storniert</button>
+        <button class="filter-tab">Abgeschlossen</button>
+        <div class="filter-separator"></div>
+        <button class="filter-tab" data-show-past>Vergangene anzeigen</button>
+      </div>
+
+      <div id="buchungenList"></div>
+    </div>
+
+    <!-- ==================== KALENDER ==================== -->
+    <div id="page-kalender" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Kalender</h1>
+        <p class="page-subtitle">Wochenübersicht – Klicken Sie auf eine Zelle, um zu buchen oder zu bearbeiten</p>
+      </div>
+
+      <div class="calendar-toolbar">
+        <div class="calendar-toolbar-left">
+          <button class="cal-view-btn active" id="calViewWeek">Woche</button><button class="cal-view-btn" id="calViewMonth">Monat</button>
+        </div>
+        <div class="flex-center-gap-8">
+          <button class="cal-nav-btn" id="calPrev" aria-label="Vorherige Woche"><i data-lucide="chevron-left" style="width:16px;height:16px;"></i></button>
+          <button class="cal-nav-btn" id="calNext" aria-label="Nächste Woche"><i data-lucide="chevron-right" style="width:16px;height:16px;"></i></button>
+          <button class="cal-today-btn" id="calToday">Heute</button>
+          <button class="btn ml-8" onclick="exportICS()">
+            <i data-lucide="download" style="width:16px;height:16px;"></i> Kalender exportieren (.ics)
+          </button>
+        </div>
+      </div>
+
+      <div class="cal-date-range" id="calDateRange">
+        <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+        <span id="calDateRangeText">09. März – 15. März 2026</span>
+      </div>
+
+      <div class="cal-week-grid" id="calendarGrid"></div>
+    </div>
+
+    <!-- ==================== E-MAIL ANALYSE ==================== -->
+    <div id="page-email" class="page">
+      <div class="page-header">
+        <h1 class="page-title">E-Mail Analyse</h1>
+        <p class="page-subtitle">Kopieren Sie eine Buchungsanfrage-E-Mail hier ein. Die KI analysiert den Text, erkennt wiederkehrende Gäste und schlägt passende Zimmer vor.</p>
+      </div>
+
+      <div class="email-card">
+        <div class="email-card-header">
+          <i data-lucide="mail" style="width:18px;height:18px;"></i>
+          E-Mail-Text einfügen
+        </div>
+        <textarea class="email-textarea" id="emailTextarea" aria-label="E-Mail-Text einfügen" placeholder="Hier den E-Mail-Text der Buchungsanfrage einfügen...
+
+Beispiel:
+Sehr geehrter Pater Jakobus,
+ich würde gerne vom 15. bis 18. März bei Ihnen übernachten.
+Mit freundlichen Grüßen,
+P. Thomas Müller OSB"></textarea>
+        <div class="mt-16">
+          <button class="btn btn-dark" id="emailAnalyzeBtn" onclick="analyzeEmail()">
+            <i data-lucide="sparkles" style="width:16px;height:16px;"></i>
+            E-Mail analysieren
+          </button>
+          <div id="emailAnalyzeStatus" style="margin-top:8px;"></div>
+        </div>
+        <div id="emailResult"></div>
+      </div>
+    </div>
+
+    <!-- ==================== GÄSTE ==================== -->
+    <div id="page-gaeste" class="page">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Gäste</h1>
+            <p class="page-subtitle"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openGastModal(-1)">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i> Neuer Gast
+          </button>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <i data-lucide="search" style="width:16px;height:16px;color:var(--text-muted);"></i>
+        <input type="text" placeholder="Gäste suchen (Name, E-Mail, Telefon)..." aria-label="Gäste durchsuchen" />
+      </div>
+
+      <div id="gaesteList"></div>
+    </div>
+
+    <!-- ==================== KÜCHENLISTE ==================== -->
+    <div id="page-kuechenliste" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Küchenliste</h1>
+        <p class="page-subtitle" id="kuecheSubtitle">Mahlzeitenplanung für die Küche</p>
+      </div>
+
+      <div class="kueche-toolbar">
+        <div class="kueche-toolbar-left">
+          <button class="cal-nav-btn" id="kuechePrev" aria-label="Vorherige Woche"><i data-lucide="chevron-left" style="width:16px;height:16px;"></i></button>
+          <button class="cal-today-btn" id="kuecheToday">Heute</button>
+          <button class="cal-nav-btn" id="kuecheNext" aria-label="Nächste Woche"><i data-lucide="chevron-right" style="width:16px;height:16px;"></i></button>
+        </div>
+        <div class="flex-gap-8">
+          <button class="btn" id="kuechePrint"><i data-lucide="printer" style="width:16px;height:16px;"></i> Drucken</button>
+          <button class="btn btn-primary" onclick="openTagesgastModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tagesgast</button>
+        </div>
+      </div>
+
+      <div class="kueche-stats" id="kuecheStats"></div>
+      <div id="kuecheDays"></div>
+    </div>
+
+
+    <!-- ==================== STATISTIK ==================== -->
+    <div id="page-statistik" class="page">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Statistik & Auslastung</h1>
+          </div>
+          <div class="flex-gap-8">
+            <select class="export-select" id="statistikJahr" aria-label="Jahr auswählen" onchange="renderStatistikPage()"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--left" id="statAuslastung">
+          <div class="stat-value default stat-value--lg">–</div>
+          <div class="stat-label">Gesamtauslastung</div>
+        </div>
+        <div class="stat-card stat-card--left" id="statBelegt">
+          <div class="stat-value default stat-value--lg">–</div>
+          <div class="stat-label">Belegte Zimmertage</div>
+        </div>
+        <div class="stat-card stat-card--left" id="statVerfuegbar">
+          <div class="stat-value default stat-value--lg">–</div>
+          <div class="stat-label">Verfügbare Zimmertage</div>
+        </div>
+        <div class="stat-card stat-card--left" id="statFrei">
+          <div class="stat-value default stat-value--lg">–</div>
+          <div class="stat-label">Freie Zimmertage</div>
+        </div>
+      </div>
+
+      <div class="stat-bar-chart">
+        <div class="stat-bar-title">
+          <i data-lucide="bed" style="width:18px;height:18px;"></i> Auslastung pro Zimmer
+        </div>
+        <div id="zimmerBars"></div>
+      </div>
+
+      <div class="stat-bar-chart mt-24">
+        <div class="stat-bar-title">
+          <i data-lucide="bar-chart-3" style="width:18px;height:18px;"></i> Jahresvergleich
+        </div>
+        <div id="jahresvergleichTabelle"></div>
+      </div>
+    </div>
+
+
+    <!-- ==================== VORLAGEN ==================== -->
+    <div id="page-vorlagen" class="page">
+      <div class="page-header">
+        <h1 class="page-title flex-center-gap-8">
+          <i data-lucide="file-text" style="width:24px;height:24px;"></i> E-Mail-Vorlagen
+        </h1>
+      </div>
+
+      <div class="vorlagen-grid">
+        <!-- Left: Vorlage & Daten -->
+        <div class="email-card">
+          <div class="email-card-header vorlagen-data-header">Vorlage & Daten</div>
+
+          <div class="form-group">
+            <label class="form-label" for="vorlageTyp">Vorlage</label>
+            <select class="form-select" id="vorlageTyp" onchange="updateVorlagePreview()">
+              <option value="bestaetigung">Buchungsbestätigung</option>
+              <option value="absage">Absage</option>
+              <option value="erinnerung">Anreise-Erinnerung</option>
+              <option value="stornierung">Stornierungsbestätigung</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="vorlageBuchung">Aus Buchung übernehmen</label>
+            <select class="form-select" id="vorlageBuchung" onchange="fillVorlageFromBooking()">
+              <option value="">Buchung wählen...</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="vorlageAnrede">Anrede</label>
+              <select class="form-select" id="vorlageAnrede" onchange="updateVorlagePreview()">
+                <option value="Herr">Herr</option>
+                <option value="Frau">Frau</option>
+                <option value="Hochwürden">Hochwürden</option>
+                <option value="">–</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="vorlageName">Name</label>
+              <input type="text" class="form-input" id="vorlageName" oninput="updateVorlagePreview()" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="vorlageAnreise">Anreise</label>
+              <input type="text" class="form-input" id="vorlageAnreise" oninput="updateVorlagePreview()" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="vorlageAbreise">Abreise</label>
+              <input type="text" class="form-input" id="vorlageAbreise" oninput="updateVorlagePreview()" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="vorlageZimmer">Zimmer</label>
+              <input type="text" class="form-input" id="vorlageZimmer" oninput="updateVorlagePreview()" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="vorlagePersonen">Personen</label>
+              <input type="number" class="form-input" id="vorlagePersonen" value="1" min="1" oninput="updateVorlagePreview()" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Vorschau -->
+        <div class="email-card">
+          <div class="vorschau-header">
+            <div class="email-card-header">Vorschau</div>
+            <button class="btn btn-primary" onclick="copyVorlage()">
+              <i data-lucide="copy" style="width:14px;height:14px;"></i> Kopieren
+            </button>
+          </div>
+
+          <div class="betreff-row">
+            <span class="betreff-label">Betreff:</span>
+            <div id="vorlageBetreff" class="vorlage-betreff"></div>
+            <button class="icon-btn" onclick="copyBetreff()" title="Betreff kopieren" aria-label="Betreff kopieren">
+              <i data-lucide="copy" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+
+          <div id="vorlagePreview" class="vorlage-preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== EXPORTE ==================== -->
+    <div id="page-exporte" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Exporte</h1>
+        <p class="page-subtitle">Küchenlisten und Gästelisten exportieren und drucken</p>
+      </div>
+
+      <div class="export-toolbar">
+        <span class="text-bold">Zeitraum:</span>
+        <select class="export-select" id="exportZeitraum" aria-label="Zeitraum auswählen">
+          <option value="woche">Woche</option>
+          <option value="monat">Monat</option>
+        </select>
+        <button class="cal-nav-btn" id="exportPrev" aria-label="Vorheriger Zeitraum"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></button>
+        <span id="exportDateRange" class="flex-center-gap-6">
+          <i data-lucide="calendar" style="width:14px;height:14px;"></i>
+        </span>
+        <button class="cal-nav-btn" id="exportNext" aria-label="Nächster Zeitraum"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></button>
+      </div>
+
+      <div id="exportTableContainer"></div>
+
+      <div class="mt-24">
+        <button class="btn" onclick="exportServietten()">
+          <i data-lucide="utensils" style="width:16px;height:16px;"></i> Serviettenbeschriftungen (aktueller Monat)
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== SPENDEN ==================== -->
+    <div id="page-spenden" class="page">
+      <div class="page-header">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title flex-center-gap-10">
+              <i data-lucide="heart-handshake" style="width:24px;height:24px;"></i> Spenden
+            </h1>
+            <p class="page-subtitle" id="spendenSubtitle">Gesamte Spenden: &euro; 0,00</p>
+          </div>
+          <div class="flex-gap-8">
+            <button class="export-btn-full export-btn-inline" onclick="exportSpendenXLSX()">
+              <i data-lucide="download" style="width:16px;height:16px;"></i> Spendenliste exportieren (XLSX)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid stats-grid-3col">
+        <div class="stat-card stat-card--left">
+          <div class="stat-value green stat-value--lg" id="spendenTotal">&euro; 0,00</div>
+          <div class="stat-label">Gesamtbetrag</div>
+        </div>
+        <div class="stat-card stat-card--left">
+          <div class="stat-value default stat-value--lg" id="spendenAnzahl">0</div>
+          <div class="stat-label">Anzahl Spenden</div>
+        </div>
+        <div class="stat-card stat-card--left">
+          <div class="stat-value default stat-value--lg" id="spendenDurchschnitt">&euro; 0,00</div>
+          <div class="stat-label">Durchschnitt pro Spende</div>
+        </div>
+      </div>
+
+      <div class="export-toolbar mb-16">
+        <span class="text-bold">Filter:</span>
+        <select class="export-select" id="spendenFilterYear" aria-label="Jahr auswählen" onchange="renderSpendenPage()">
+          <option value="alle">Alle Jahre</option>
+        </select>
+        <select class="export-select" id="spendenFilterMonth" aria-label="Monat auswählen" onchange="renderSpendenPage()">
+          <option value="alle">Alle Monate</option>
+          <option value="0">J&auml;nner</option>
+          <option value="1">Februar</option>
+          <option value="2">M&auml;rz</option>
+          <option value="3">April</option>
+          <option value="4">Mai</option>
+          <option value="5">Juni</option>
+          <option value="6">Juli</option>
+          <option value="7">August</option>
+          <option value="8">September</option>
+          <option value="9">Oktober</option>
+          <option value="10">November</option>
+          <option value="11">Dezember</option>
+        </select>
+      </div>
+
+      <div id="spendenListContainer"></div>
+
+      <div class="mt-28">
+        <div class="section-title mb-14">Monatliche &Uuml;bersicht</div>
+        <div id="spendenMonthlyChart"></div>
+      </div>
+    </div>
+
+    <!-- ==================== BACKUP ==================== -->
+    <div id="page-backup" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Datenbank-Backup</h1>
+        <p class="page-subtitle">Sichern Sie alle Daten des Gastmeisters als Backup-Datei</p>
+      </div>
+
+      <div class="backup-overview">
+        <div class="backup-overview-title">
+          <i data-lucide="database" style="width:16px;height:16px;"></i> Datenbank-Übersicht
+        </div>
+        <div class="backup-overview-sub">Aktuelle Anzahl der Einträge in allen Tabellen</div>
+        <div class="backup-stats">
+          <div class="backup-stat">
+            <div class="backup-stat-value" id="backupStatZimmer">14</div>
+            <div class="backup-stat-label">Zimmer</div>
+          </div>
+          <div class="backup-stat">
+            <div class="backup-stat-value" id="backupStatGaeste">0</div>
+            <div class="backup-stat-label">Gäste</div>
+          </div>
+          <div class="backup-stat">
+            <div class="backup-stat-value" id="backupStatBuchungen">0</div>
+            <div class="backup-stat-label">Buchungen</div>
+          </div>
+          <div class="backup-stat">
+            <div class="backup-stat-value red" id="backupStatMahlzeiten">0</div>
+            <div class="backup-stat-label">Mahlzeitenpläne</div>
+          </div>
+          <div class="backup-stat">
+            <div class="backup-stat-value" id="backupStatTagesgaeste">0</div>
+            <div class="backup-stat-label">Tagesgäste</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="backup-cards">
+        <div class="backup-card">
+          <h2>JSON-Backup</h2>
+          <p>Vollständiges Backup aller Tabellen im JSON-Format. Ideal für die technische Datensicherung und Wiederherstellung.</p>
+          <ul>
+            <li>Enthält alle 7 Tabellen mit allen Feldern</li>
+            <li>Maschinenlesbares Format (JSON)</li>
+            <li>Geeignet für Import und Wiederherstellung</li>
+          </ul>
+          <button class="btn btn-full" onclick="exportDataJSON()">
+            <i data-lucide="download" style="width:16px;height:16px;"></i> Als JSON herunterladen
+          </button>
+        </div>
+        <div class="backup-card">
+          <h2>Excel-Backup</h2>
+          <p>Backup als Excel-Datei mit separaten Arbeitsblättern pro Tabelle. Ideal zum Durchsehen und Archivieren.</p>
+          <ul>
+            <li>7 Arbeitsblätter (Zimmer, Gäste, Buchungen, ...)</li>
+            <li>Lesbare Spaltenüberschriften auf Deutsch</li>
+            <li>Öffnen mit Excel, LibreOffice oder Numbers</li>
+          </ul>
+          <button class="btn btn-full" onclick="exportDataCSV()">
+            <i data-lucide="download" style="width:16px;height:16px;"></i> Als Excel herunterladen
+          </button>
+        </div>
+      </div>
+
+      <div class="backup-card mb-20">
+        <h2>Backup importieren</h2>
+        <p>Laden Sie einen JSON-Backup aus dem Hauptsystem, um alle Buchungen und Gäste zu aktualisieren.</p>
+        <input type="file" id="importFileInput" accept=".json" style="display:none;" />
+        <button class="btn btn-primary btn-full" onclick="document.getElementById('importFileInput').click()">
+          <i data-lucide="upload" style="width:16px;height:16px;"></i> JSON-Backup importieren
+        </button>
+      </div>
+
+      <div class="backup-card mb-20">
+        <h2><i data-lucide="sparkles" style="width:18px;height:18px;vertical-align:middle;"></i> KI-Analyse (Claude API)</h2>
+        <p>Mit einem Anthropic API-Key wird die E-Mail-Analyse von Claude Haiku uebernommen. Ohne Key wird der lokale Regex-Parser verwendet.</p>
+        <div id="apiKeyStatus" style="margin-bottom:12px;"></div>
+        <div class="form-group">
+          <label class="form-label" for="apiKeyInput">API-Key</label>
+          <input type="password" class="form-input" id="apiKeyInput" placeholder="sk-ant-..." />
+        </div>
+        <button class="btn btn-primary" onclick="saveApiKey()">
+          <i data-lucide="save" style="width:16px;height:16px;"></i> API-Key speichern
+        </button>
+      </div>
+
+      <div class="backup-card mb-20">
+        <h2><i data-lucide="github" style="width:18px;height:18px;vertical-align:middle;"></i> GitHub-Sync</h2>
+        <p>Synchronisiert Buchungsdaten zwischen allen Geräten (Mac, iPhone) über GitHub. Änderungen werden automatisch hochgeladen.</p>
+        <div id="githubSyncStatus" style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);"></div>
+        <div class="form-group">
+          <label class="form-label" for="githubTokenInput">GitHub Personal Access Token</label>
+          <input type="password" class="form-input" id="githubTokenInput" placeholder="GitHub Personal Access Token" />
+        </div>
+        <button class="btn btn-primary" onclick="saveGitHubTokenNew()">
+          <i data-lucide="save" style="width:16px;height:16px;"></i> Token speichern
+        </button>
+        <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">Token erstellen: GitHub → Settings → Developer Settings → Fine-grained tokens → Repo: gastmeister, Contents: Read+Write</p>
+      </div>
+
+      <div class="backup-hint">
+        <div class="backup-hint-title">
+          <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i> Hinweis zur Datensicherung
+        </div>
+        <p>Es wird empfohlen, regelmäßig (z.B. wöchentlich) ein Backup zu erstellen und die Datei an einem sicheren Ort aufzubewahren. Das JSON-Format eignet sich für die technische Wiederherstellung, das Excel-Format für die Archivierung und Einsichtnahme.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Neue Buchung Modal -->
+<div class="modal-overlay" id="modalBuchung" role="dialog" aria-modal="true" aria-labelledby="modalBuchungTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalBuchungTitle">Neue Buchung</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalBuchung')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="buchungGast">Gastname *</label>
+        <div class="autocomplete-wrapper" id="buchungGastWrapper">
+          <input type="text" class="form-input" id="buchungGast" placeholder="Name des Gastes" autocomplete="off" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="buchungAnreise">Anreise *</label>
+          <input type="date" class="form-input" id="buchungAnreise" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="buchungAbreise">Abreise *</label>
+          <input type="date" class="form-input" id="buchungAbreise" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="buchungZimmer">Zimmer * <span id="buchungZimmerHint" class="buchung-zimmer-hint"></span></label>
+        <select class="form-select" id="buchungZimmer" required>
+          <option value="">Bitte zuerst Datum wählen...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="buchungPersonen">Personen</label>
+          <input type="number" class="form-input" id="buchungPersonen" value="1" min="1" max="4" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="buchungStatus">Status</label>
+          <select class="form-select" id="buchungStatus">
+            <option value="anfrage">Anfrage</option>
+            <option value="bestaetigt">Bestätigt</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="buchungNotizen">Notizen</label>
+        <textarea class="form-textarea" id="buchungNotizen" placeholder="Optionale Notizen..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modalBuchung')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveBuchung()">
+        <i data-lucide="check" style="width:16px;height:16px;"></i> Buchung speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Neuer Gast Modal -->
+<div class="modal-overlay" id="modalGast" role="dialog" aria-modal="true" aria-labelledby="gastModalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="gastModalTitle">Neuer Gast</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalGast')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="gastName">Name *</label>
+        <input type="text" class="form-input" id="gastName" placeholder="Vollständiger Name" required />
+        <div id="gastMergeSection" style="display:none;" class="mt-8">
+          <label class="form-label" for="gastMergeFrom">Mit diesem Gast zusammenführen:</label>
+          <input type="text" class="form-input" id="gastMergeFrom" placeholder="Name des alten Eintrags..." />
+          <div class="merge-hint">Alle Buchungen des eingegebenen Namens werden auf den aktuellen Namen übertragen.</div>
+        </div>
+        <button type="button" class="merge-toggle-btn" onclick="document.getElementById('gastMergeSection').style.display=document.getElementById('gastMergeSection').style.display==='none'?'block':'none';">Gast zusammenführen</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="gastEmail">E-Mail</label>
+        <input type="email" class="form-input" id="gastEmail" placeholder="email@beispiel.at" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="gastTelefon">Telefon</label>
+        <input type="tel" class="form-input" id="gastTelefon" placeholder="+43 ..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="gastNotizen">Notizen</label>
+        <textarea class="form-textarea" id="gastNotizen" placeholder="Vegetarisch, Allergien, Sonderwünsche..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modalGast')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveGast()">
+        <i data-lucide="check" style="width:16px;height:16px;"></i> Gast speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Buchung Bearbeiten Modal -->
+<div class="modal-overlay" id="modalBuchungEdit" role="dialog" aria-modal="true" aria-labelledby="modalBuchungEditTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalBuchungEditTitle">Buchung bearbeiten</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalBuchungEdit')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="editBuchungGast">Gastname *</label>
+        <input type="text" class="form-input" id="editBuchungGast" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="editBuchungZimmer">Zimmer *</label>
+        <select class="form-select" id="editBuchungZimmer" required>
+          <option value="">Zimmer wählen...</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="editBuchungAnreise">Anreise *</label>
+          <input type="date" class="form-input" id="editBuchungAnreise" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editBuchungAbreise">Abreise *</label>
+          <input type="date" class="form-input" id="editBuchungAbreise" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="editBuchungPersonen">Personen</label>
+          <input type="number" class="form-input" id="editBuchungPersonen" value="1" min="1" max="4" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editBuchungStatus">Status</label>
+          <select class="form-select" id="editBuchungStatus">
+            <option value="anfrage">Anfrage</option>
+            <option value="bestaetigt">Bestätigt</option>
+            <option value="storniert">Storniert</option>
+            <option value="abgeschlossen">Abgeschlossen</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="editBuchungNotizen">Notizen</label>
+        <textarea class="form-textarea" id="editBuchungNotizen" placeholder="Optionale Notizen..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Aktivitäten</label>
+        <div class="flex-wrap-gap-6 mb-8" id="editAktivitaetenChecks">
+          <label class="activity-check-label"><input type="checkbox" value="Stiftsführung" style="accent-color:var(--accent);"> Stiftsführung</label>
+          <label class="activity-check-label"><input type="checkbox" value="Sternwarte" style="accent-color:var(--accent);"> Sternwarte</label>
+          <label class="activity-check-label"><input type="checkbox" value="Bibliothek" style="accent-color:var(--accent);"> Bibliothek</label>
+          <label class="activity-check-label"><input type="checkbox" value="Exerzitien" style="accent-color:var(--accent);"> Exerzitien</label>
+          <label class="activity-check-label"><input type="checkbox" value="Ausflug" style="accent-color:var(--accent);"> Ausflug</label>
+          <label class="activity-check-label"><input type="checkbox" value="Kunstsammlungen" style="accent-color:var(--accent);"> Kunstsammlungen</label>
+          <label class="activity-check-label"><input type="checkbox" value="Fischkalter" style="accent-color:var(--accent);"> Fischkalter</label>
+          <label class="activity-check-label"><input type="checkbox" value="Gottesdienst" style="accent-color:var(--accent);"> Gottesdienst</label>
+        </div>
+        <div class="form-group mt-8">
+          <label class="form-label" for="editAktivitaetenSonstig">Sonstiges</label>
+          <input type="text" class="form-input" id="editAktivitaetenSonstig" placeholder="Weitere Aktivitäten..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="editBuchungSpende">Spende (&euro;)</label>
+        <input type="number" class="form-input" id="editBuchungSpende" placeholder="0.00" min="0" step="0.01" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-delete" onclick="deleteEditingBuchung()">
+        <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Löschen
+      </button>
+      <div class="flex-spacer"></div>
+      <button class="btn" onclick="closeModal('modalBuchungEdit')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveEditBuchung()">
+        <i data-lucide="check" style="width:16px;height:16px;"></i> Speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tagesgast Modal -->
+<div class="modal-overlay" id="modalTagesgast" role="dialog" aria-modal="true" aria-labelledby="modalTagesgastTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTagesgastTitle">Tagesgast hinzufügen</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalTagesgast')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="tagesgastName">Name</label>
+        <input type="text" class="form-input" id="tagesgastName" placeholder="Name des Gastes" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="tagesgastTag">Tag</label>
+          <select class="form-select" id="tagesgastTag"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tagesgastPers">Personen</label>
+          <input type="number" class="form-input" id="tagesgastPers" value="1" min="1" max="20" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="tagesgastBereich">Bereich</label>
+        <select class="form-select" id="tagesgastBereich">
+          <option value="gaestetrakt">Gästetrakt</option>
+          <option value="konvent">Konvent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mahlzeiten</label>
+        <div class="meal-row">
+          <label class="meal-label">
+            <input type="checkbox" id="tagesgastF" style="width:16px;height:16px;accent-color:var(--accent);" />
+            <i data-lucide="coffee" style="width:14px;height:14px;color:var(--text-muted);"></i> Frühstück
+          </label>
+          <label class="meal-label">
+            <input type="checkbox" id="tagesgastM" checked style="width:16px;height:16px;accent-color:var(--accent);" />
+            <i data-lucide="sun" style="width:14px;height:14px;color:var(--text-muted);"></i> Mittag
+          </label>
+          <label class="meal-label">
+            <input type="checkbox" id="tagesgastA" style="width:16px;height:16px;accent-color:var(--accent);" />
+            <i data-lucide="moon" style="width:14px;height:14px;color:var(--text-muted);"></i> Abend
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="tagesgastVeg">Ernährung</label>
+        <select class="form-select" id="tagesgastVeg">
+          <option value="normal">Normal</option>
+          <option value="vegetarisch">Vegetarisch</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modalTagesgast')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveTagesgast()">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gast History Modal -->
+<div class="modal-overlay" id="modalGastHistory" role="dialog" aria-modal="true" aria-labelledby="gastHistoryTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="gastHistoryTitle">Buchungshistorie</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalGastHistory')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="zimmer-detail-header-info">
+      <div class="zimmer-detail-icon-box guest-history-icon-box">
+        <i data-lucide="user" style="width:22px;height:22px;"></i>
+      </div>
+      <div class="zimmer-detail-header-text">
+        <h3 id="gastHistoryName"></h3>
+        <span id="gastHistoryStats"></span>
+      </div>
+    </div>
+    <div id="gastHistoryPattern" class="guest-pattern"></div>
+    <div class="modal-body" id="gastHistoryBody"></div>
+  </div>
+</div>
+
+<!-- Zimmer Detail Modal -->
+<div class="modal-overlay" id="modalZimmerDetail" role="dialog" aria-modal="true" aria-labelledby="zimmerDetailTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="zimmerDetailTitle">Zimmer</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalZimmerDetail')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="zimmer-detail-header-info" id="zimmerDetailHeaderInfo">
+      <div class="zimmer-detail-icon-box">
+        <i data-lucide="bed-single" style="width:22px;height:22px;"></i>
+      </div>
+      <div class="zimmer-detail-header-text">
+        <h3 id="zimmerDetailName"></h3>
+        <span id="zimmerDetailType"></span>
+      </div>
+      <div class="ml-auto" id="zimmerDetailBadge"></div>
+    </div>
+    <div class="modal-body" id="zimmerDetailBody"></div>
+  </div>
+</div>
+
+<!-- Vorlage Modal -->
+<!-- Tagesübersicht Modal -->
+<div class="modal-overlay" id="modalDayDetail" role="dialog" aria-modal="true" aria-labelledby="dayDetailTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dayDetailTitle">Belegung</h2>
+      <button class="modal-close" aria-label="Schließen" onclick="closeModal('modalDayDetail')"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+    </div>
+    <div class="modal-body" id="dayDetailBody"></div>
+  </div>
+</div>
+
+<!-- Bestätigungsdialog -->
+<div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+  <div class="confirm-dialog">
+    <div class="confirm-icon"><i data-lucide="alert-triangle" style="width:24px;height:24px;"></i></div>
+    <div class="confirm-title" id="confirmTitle">Wirklich löschen?</div>
+    <div class="confirm-text" id="confirmText">Dieser Vorgang kann nicht rückgängig gemacht werden.</div>
+    <div class="confirm-actions">
+      <button class="btn" onclick="closeConfirm()">Abbrechen</button>
+      <button class="btn btn-danger" id="confirmBtn" onclick="executeConfirm()">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer" aria-live="polite" role="status"></div>
+
+<script src="tuerschild_template.js"></script>
+<script src="kelch_serviette.js"></script>
+<script src="github-sync.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+
+</body>
+</html>

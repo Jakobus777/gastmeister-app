@@ -1,0 +1,10 @@
+gastmeister_data.json
+.DS_Store
+*.log
+__pycache__/
+Sicherungen/
+Daten/
+tunnel_url.txt
+tunnel.log
+*.sh
+backup_server.py
