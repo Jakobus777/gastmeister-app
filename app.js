@@ -1,11 +1,19 @@
 // ========== Error Handler ==========
 window.onerror = function(msg, url, line, col, error) {
   console.error('Gastmeister Error:', msg, 'Line:', line);
-  document.body.insertAdjacentHTML('afterbegin',
-    '<div style="background:#fdeeed;border:2px solid #dc3a3a;padding:12px 20px;margin:10px;border-radius:8px;font-size:14px;color:#c42828;z-index:9999;position:relative;">' +
-    '<strong>Fehler:</strong> ' + msg + ' (Zeile ' + line + ')' +
-    '<br><button onclick="localStorage.removeItem(\'gastmeister_data\');location.reload();" style="margin-top:8px;padding:6px 14px;background:#dc3a3a;color:white;border:none;border-radius:6px;cursor:pointer;">Cache löschen & neu laden</button>' +
-    '</div>');
+  var errDiv = document.createElement('div');
+  errDiv.style.cssText = 'background:#fdeeed;border:2px solid #dc3a3a;padding:12px 20px;margin:10px;border-radius:8px;font-size:14px;color:#c42828;z-index:9999;position:relative;';
+  var strong = document.createElement('strong');
+  strong.textContent = 'Fehler: ';
+  errDiv.appendChild(strong);
+  errDiv.appendChild(document.createTextNode(msg + ' (Zeile ' + line + ')'));
+  errDiv.appendChild(document.createElement('br'));
+  var btn = document.createElement('button');
+  btn.textContent = 'Cache löschen & neu laden';
+  btn.style.cssText = 'margin-top:8px;padding:6px 14px;background:#dc3a3a;color:white;border:none;border-radius:6px;cursor:pointer;';
+  btn.onclick = function() { localStorage.removeItem('gastmeister_data'); location.reload(); };
+  errDiv.appendChild(btn);
+  document.body.insertBefore(errDiv, document.body.firstChild);
 };
 
 console.log('[Gastmeister] App wird geladen...');
@@ -23,6 +31,14 @@ function _pdfFill(doc, r, g, b) {
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ========== Datum-Hilfsfunktionen ==========
+function splitDateRange(dates) {
+  if (!dates) return ['', ''];
+  // Unterstützt em-dash, en-dash und normalen Bindestrich
+  var parts = dates.split(/\s*[\u2013\u2014\-]\s*/);
+  return parts.length >= 2 ? parts : [parts[0] || '', ''];
 }
 
 // ========== ID Generator ==========
@@ -109,6 +125,7 @@ function _initSync() {
 
 function saveData() {
   _dataDirty = true;
+  invalidateBookingsDayCache();
   const data = { bookings: bookingsData, guests: guestsData, dayGuests: dayGuestsData, mealOverrides: mealOverrides, version: DATA_VERSION };
   // 1. localStorage (synchron, sofort)
   try {
@@ -343,28 +360,32 @@ function updateBackupStats() {
 }
 
 function refreshAll() {
-  renderBuchungen();
+  // Immer aktualisieren (günstige Stats):
   updateBuchungenCount();
   updateDashboardStats();
-  document.getElementById('zimmerGrid').innerHTML = '';
-  document.getElementById('konventGrid').innerHTML = '';
-  generateZimmer();
-  generateBelegung();
-  generateCalendar();
-  renderGaeste();
   updateGaesteCount();
-  renderKuechenliste();
-  generateStatBars();
-  updateBackupStats();
-  renderExportTable();
-  renderDailyOverview();
-  renderSpendenPage();
+
+  // Nur aktive Seite rendern:
+  var activePage = document.querySelector('.page.active');
+  var pageId = activePage ? activePage.id : '';
+
+  if (pageId === 'page-uebersicht' || !pageId) renderDailyOverview();
+  if (pageId === 'page-buchungen') renderBuchungen();
+  if (pageId === 'page-kalender') { document.getElementById('zimmerGrid').innerHTML = ''; document.getElementById('konventGrid').innerHTML = ''; generateZimmer(); generateBelegung(); generateCalendar(); }
+  if (pageId === 'page-gaeste') renderGaeste();
+  if (pageId === 'page-kuechenliste') renderKuechenliste();
+  if (pageId === 'page-statistik') { generateStatBars(); renderStatistikPage(); }
+  if (pageId === 'page-spenden') renderSpendenPage();
+  if (pageId === 'page-backup') updateBackupStats();
+  if (pageId === 'page-exporte') renderExportTable();
+
   lucide.createIcons();
 }
 
 let currentBookingFilter = 'alle';
 let currentBookingSearch = '';
 let currentGuestSearch = '';
+var _gaestePageSize = 50;
 
 // ========== Confirm Dialog ==========
 let confirmCallback = null;
@@ -422,7 +443,7 @@ function updateDashboardStats() {
     if (!b || !b.status) return;
     if (b.deletedAt) return;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -472,11 +493,18 @@ function showPage(pageId) {
   if (page) page.classList.add('active');
   const item = document.querySelector('.sidebar-item[data-page="' + pageId + '"]');
   if (item) item.classList.add('active');
-  // Refresh data on page switch
+  // Render neue Seite beim Wechsel
   if (pageId === 'vorlagen') populateVorlageBuchungen();
   if (pageId === 'uebersicht') renderDailyOverview();
+  if (pageId === 'buchungen') renderBuchungen();
+  if (pageId === 'kalender') { document.getElementById('zimmerGrid').innerHTML = ''; document.getElementById('konventGrid').innerHTML = ''; generateZimmer(); generateBelegung(); generateCalendar(); }
+  if (pageId === 'gaeste') { renderGaeste(); updateGaesteCount(); }
+  if (pageId === 'kuechenliste') renderKuechenliste();
+  if (pageId === 'statistik') { generateStatBars(); renderStatistikPage(); }
   if (pageId === 'spenden') renderSpendenPage();
-  if (pageId === 'statistik') renderStatistikPage();
+  if (pageId === 'backup') updateBackupStats();
+  if (pageId === 'exporte') renderExportTable();
+  lucide.createIcons();
 }
 
 // ========== Sidebar Collapse ==========
@@ -621,15 +649,19 @@ function mergeServerData(serverData) {
   // Nicht-gematchte Buchungen mit ID behalten (lokale Aenderungen die noch nicht am Server sind)
 
   // Andere Daten mergen (guests, dayGuests, mealOverrides)
-  if (serverData.guests && JSON.stringify(serverData.guests) !== JSON.stringify(guestsData)) {
-    guestsData.length = 0;
-    serverData.guests.forEach(function(g) { guestsData.push(g); });
-    changed = true;
+  if (serverData.guests && serverData.guests.length > 0) {
+    if (serverData.guests.length !== guestsData.length) {
+      guestsData.length = 0;
+      serverData.guests.forEach(function(g) { guestsData.push(g); });
+      changed = true;
+    }
   }
-  if (serverData.dayGuests && JSON.stringify(serverData.dayGuests) !== JSON.stringify(dayGuestsData)) {
-    dayGuestsData.length = 0;
-    serverData.dayGuests.forEach(function(d) { dayGuestsData.push(d); });
-    changed = true;
+  if (serverData.dayGuests && serverData.dayGuests.length > 0) {
+    if (serverData.dayGuests.length !== dayGuestsData.length) {
+      dayGuestsData.length = 0;
+      serverData.dayGuests.forEach(function(d) { dayGuestsData.push(d); });
+      changed = true;
+    }
   }
   if (serverData.mealOverrides && JSON.stringify(serverData.mealOverrides) !== JSON.stringify(mealOverrides)) {
     Object.keys(mealOverrides).forEach(function(k) { delete mealOverrides[k]; });
@@ -829,15 +861,9 @@ function fillVorlageFromBooking() {
   if (isNaN(idx) || idx < 0 || idx >= bookingsData.length) return;
 
   const b = bookingsData[idx];
-  const parts = b.dates.split('–');
-  if (parts.length < 2) {
-    const parts2 = b.dates.split('-');
-    document.getElementById('vorlageAnreise').value = parts2[0] ? parts2[0].trim() : '';
-    document.getElementById('vorlageAbreise').value = parts2[1] ? parts2[1].trim() : '';
-  } else {
-    document.getElementById('vorlageAnreise').value = parts[0] ? parts[0].trim() : '';
-    document.getElementById('vorlageAbreise').value = parts[1] ? parts[1].trim() : '';
-  }
+  const parts = splitDateRange(b.dates);
+  document.getElementById('vorlageAnreise').value = parts[0] ? parts[0].trim() : '';
+  document.getElementById('vorlageAbreise').value = parts[1] ? parts[1].trim() : '';
 
   document.getElementById('vorlageName').value = b.name;
   document.getElementById('vorlageZimmer').value = b.room;
@@ -924,7 +950,7 @@ function generateBelegung() {
     if (!b || !b.status) return false;
     if (b.deletedAt) return false;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return false;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return false;
     const bis = parseDateDE(parts[1]);
     if (!bis) return false;
@@ -948,7 +974,7 @@ function generateBelegung() {
     // Count occupied rooms for this day
     const occupiedRooms = new Set();
     relevantBookings.forEach(b => {
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
       von.setHours(0,0,0,0);
@@ -1018,7 +1044,7 @@ function findCurrentGuest(roomName) {
     if (!b || !b.room) continue;
     if (b.room !== roomName) continue;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') continue;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) continue;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -1111,8 +1137,8 @@ function showZimmerDetail(zimmer) {
 
   // Sort by start date
   roomBookings.sort((a, b) => {
-    const aStart = parseDate(a.dates.split('–')[0]);
-    const bStart = parseDate(b.dates.split('–')[0]);
+    const aStart = parseDate(splitDateRange(a.dates)[0]);
+    const bStart = parseDate(splitDateRange(b.dates)[0]);
     return aStart - bStart;
   });
 
@@ -1240,7 +1266,7 @@ function getGuestPattern(guestName) {
   bookingsData.forEach(b => {
     const bName = b.name.toLowerCase();
     if (bName !== lowerName && !bName.includes(lowerName) && !lowerName.includes(bName)) return;
-    const parts = b.dates.split('\u2013');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 1) return;
     const von = parseDateDE(parts[0]);
     if (!von) return;
@@ -1293,7 +1319,7 @@ function getGuestPastActivities(guestName) {
     const bName = b.name.toLowerCase();
     if (bName !== lowerName && !bName.includes(lowerName) && !lowerName.includes(bName)) return;
     if (!b.activities || b.activities.length === 0) return;
-    const parts = b.dates.split('\u2013');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const bis = parseDateDE(parts[1]);
     if (!bis) return;
@@ -1633,7 +1659,7 @@ function getCalBookingCache(weekStart, weekEnd) {
   _calBookingCache = bookingsData.filter(b => {
     if (b.deletedAt) return false;
     if (b.status === 'storniert') return false;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return false;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -1652,7 +1678,7 @@ function findBookingForRoomAndDay(roomName, dayDate) {
     if (!b || !b.room) continue;
     if (b.room !== roomName) continue;
     if (b.status === 'storniert') continue;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) continue;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -1767,13 +1793,24 @@ function generateMonthCalendar() {
   });
 }
 
+var _bookingsDayCache = {};
+var _bookingsDayCacheVersion = 0;
+
+function invalidateBookingsDayCache() {
+  _bookingsDayCacheVersion++;
+  _bookingsDayCache = {};
+}
+
 function findAllBookingsForDay(dayDate) {
+  var key = dayDate.getTime() + '_' + _bookingsDayCacheVersion;
+  if (_bookingsDayCache[key]) return _bookingsDayCache[key];
+
   const day = dayDate.getTime();
   const results = [];
   for (const b of bookingsData) {
     if (b.status === 'storniert') continue;
     if (b.deletedAt) continue;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) continue;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -1782,6 +1819,8 @@ function findAllBookingsForDay(dayDate) {
     bis.setHours(0,0,0,0);
     if (day >= von.getTime() && day <= bis.getTime()) results.push(b);
   }
+
+  _bookingsDayCache[key] = results;
   return results;
 }
 
@@ -1858,7 +1897,7 @@ function openBookingEditByIndex(idx) {
   document.getElementById('editBuchungSpende').value = b.spende ? b.spende : '';
 
   // Parse "DD.MM.YYYY – DD.MM.YYYY" to date inputs
-  const parts = b.dates.split('–');
+  const parts = splitDateRange(b.dates);
   if (parts.length === 2) {
     document.getElementById('editBuchungAnreise').value = parseDEtoISO(parts[0].trim());
     document.getElementById('editBuchungAbreise').value = parseDEtoISO(parts[1].trim());
@@ -1923,7 +1962,7 @@ function saveEditBuchung() {
       const b = bookingsData[i];
       if (b.room !== zimmer) continue;
       if (b.status === 'storniert') continue;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) continue;
       const bVon = parseDateDE(parts[0]);
       const bBis = parseDateDE(parts[1]);
@@ -2032,10 +2071,9 @@ function renderGaeste() {
     return;
   }
 
-  const MAX_SHOW_GUESTS = 50;
-  const showingGuests = filtered.slice(0, MAX_SHOW_GUESTS);
-  if (filtered.length > MAX_SHOW_GUESTS) {
-    list.innerHTML = '<div style="padding:8px 14px;font-size:13px;color:var(--text-secondary);margin-bottom:8px;">' + filtered.length + ' Gäste – zeige die ersten ' + MAX_SHOW_GUESTS + '. Verwenden Sie die Suche zum Filtern.</div>';
+  const showingGuests = filtered.slice(0, _gaestePageSize);
+  if (filtered.length > _gaestePageSize) {
+    list.innerHTML = '<div style="padding:8px 14px;font-size:13px;color:var(--text-secondary);margin-bottom:8px;">' + filtered.length + ' Gäste – zeige die ersten ' + _gaestePageSize + '. Verwenden Sie die Suche zum Filtern.</div>';
   }
 
   showingGuests.forEach((g, idx) => {
@@ -2082,6 +2120,15 @@ function renderGaeste() {
     list.appendChild(card);
   });
 
+  if (filtered.length > _gaestePageSize) {
+    var moreBtn = document.createElement('button');
+    moreBtn.className = 'btn btn-secondary';
+    moreBtn.style.cssText = 'display:block;margin:16px auto;';
+    moreBtn.textContent = 'Weitere ' + Math.min(50, filtered.length - _gaestePageSize) + ' Gäste anzeigen';
+    moreBtn.onclick = function() { _gaestePageSize += 50; renderGaeste(); };
+    list.appendChild(moreBtn);
+  }
+
   lucide.createIcons({ nodes: [list] });
 }
 
@@ -2095,6 +2142,7 @@ function initGaesteSearch() {
   const input = document.querySelector('#page-gaeste .search-bar input');
   input.addEventListener('input', function() {
     currentGuestSearch = this.value;
+    _gaestePageSize = 50;
     renderGaeste();
   });
 }
@@ -2276,7 +2324,7 @@ function renderStatistikPage() {
   const allYears = new Set();
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -2310,7 +2358,7 @@ function renderStatistikPage() {
     bookingsData.forEach(b => {
       if (b.room !== room) return;
       if (b.status === 'storniert') return;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
@@ -2380,7 +2428,7 @@ function renderStatistikPage() {
 
       bookingsData.forEach(b => {
         if (b.status === 'storniert') return;
-        const parts = b.dates.split('–');
+        const parts = splitDateRange(b.dates);
         if (parts.length < 2) return;
         const von = parseDateDE(parts[0]);
         const bis = parseDateDE(parts[1]);
@@ -2654,7 +2702,7 @@ function showEmailResult(result) {
       const free = allRoomsList.filter(room => {
         return !bookingsData.some(b => {
           if (b.room !== room || b.status === 'storniert') return false;
-          const p = b.dates.split('–');
+          const p = splitDateRange(b.dates);
           if (p.length < 2) return false;
           const bVon = parseDateDE(p[0]);
           const bBis = parseDateDE(p[1]);
@@ -2838,7 +2886,7 @@ function generateWeekXLSXRows(weekStart) {
 
     bookingsData.forEach(b => {
       if (b.status === 'storniert') return;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
@@ -3045,7 +3093,7 @@ function exportKuechePDF() {
       let kF=0, kM=0, kA=0;
       bookingsData.forEach(b => {
         if (b.status === 'storniert') return;
-        const parts = b.dates.split('–'); if (parts.length < 2) return;
+        const parts = splitDateRange(b.dates); if (parts.length < 2) return;
         const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
         if (!von || !bis) return;
         von.setHours(0,0,0,0); bis.setHours(0,0,0,0);
@@ -3284,7 +3332,7 @@ function renderKuechenliste() {
     const dayGuests = [];
     bookingsData.forEach(b => {
       if (b.status === 'storniert') return;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
@@ -3606,8 +3654,8 @@ function showGuestHistory(guestName) {
 
   // Sort by date descending (newest first)
   guestBookings.sort((a, b) => {
-    const aDate = parseDateDE(a.dates.split('–')[0]);
-    const bDate = parseDateDE(b.dates.split('–')[0]);
+    const aDate = parseDateDE(splitDateRange(a.dates)[0]);
+    const bDate = parseDateDE(splitDateRange(b.dates)[0]);
     if (!aDate || !bDate) return 0;
     return bDate - aDate;
   });
@@ -3619,7 +3667,7 @@ function showGuestHistory(guestName) {
   const past = [];
   const upcoming = [];
   guestBookings.forEach(b => {
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     const bis = parts.length >= 2 ? parseDateDE(parts[1]) : null;
     if (bis) bis.setHours(0,0,0,0);
     if (bis && bis < today) {
@@ -3633,7 +3681,7 @@ function showGuestHistory(guestName) {
   const totalStays = guestBookings.length;
   let totalNights = 0;
   guestBookings.forEach(b => {
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -3706,8 +3754,8 @@ function showGuestHistory(guestName) {
   if (upcoming.length > 0) {
     // Sort upcoming by date ascending
     upcoming.sort((a, b) => {
-      const aDate = parseDateDE(a.dates.split('–')[0]);
-      const bDate = parseDateDE(b.dates.split('–')[0]);
+      const aDate = parseDateDE(splitDateRange(a.dates)[0]);
+      const bDate = parseDateDE(splitDateRange(b.dates)[0]);
       return (aDate || 0) - (bDate || 0);
     });
     html += `<div class="zimmer-detail-section-title">Kommende Buchungen (${upcoming.length})</div>`;
@@ -3761,7 +3809,7 @@ function updateZimmerDropdown() {
     const conflict = bookingsData.some(b => {
       if (b.room !== room) return false;
       if (b.status === 'storniert') return false;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return false;
       const bVon = parseDateDE(parts[0]);
       const bBis = parseDateDE(parts[1]);
@@ -4025,7 +4073,7 @@ function renderExportTable() {
     // Regular bookings
     bookingsData.forEach(b => {
       if (b.status === 'storniert') return;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
@@ -4156,7 +4204,7 @@ function renderExportTable() {
 
     bookingsData.forEach(b => {
       if (b.status === 'storniert') return;
-      const parts = b.dates.split('–');
+      const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
       const von = parseDateDE(parts[0]);
       const bis = parseDateDE(parts[1]);
@@ -4266,7 +4314,7 @@ function exportGaestelisteXLSX() {
 
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -4293,7 +4341,7 @@ function exportGaestelisteXLSX() {
     const aB = bookingsData.find(x => x.name === a.name && x.room === a.room);
     const bB = bookingsData.find(x => x.name === b.name && x.room === b.room);
     if (!aB || !bB) return 0;
-    const aD = parseDateDE(aB.dates.split('–')[0]);
+    const aD = parseDateDE(splitDateRange(aB.dates)[0]);
     const bD = parseDateDE(bB.dates.split('–')[0]);
     return (aD||0) - (bD||0);
   };
@@ -4412,7 +4460,7 @@ function exportGaestelistePDF() {
 
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–'); if (parts.length < 2) return;
+    const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
     if (!von || !bis) return;
     von.setHours(0,0,0,0); bis.setHours(0,0,0,0);
@@ -4430,7 +4478,7 @@ function exportGaestelistePDF() {
     const aB = bookingsData.find(x => x.name === a.name && x.room === a.room);
     const bB = bookingsData.find(x => x.name === b.name && x.room === b.room);
     if (!aB || !bB) return 0;
-    const aD = parseDateDE(aB.dates.split('–')[0]); const bD = parseDateDE(bB.dates.split('–')[0]);
+    const aD = parseDateDE(splitDateRange(aB.dates)[0]); const bD = parseDateDE(bB.dates.split('–')[0]);
     return (aD||0) - (bD||0);
   };
   gaestetrakt.sort(sortByDate); konvent.sort(sortByDate);
@@ -4568,7 +4616,7 @@ function exportGaestelisteMonatXLSX() {
 
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -4704,7 +4752,7 @@ function exportGaestelisteMonatPDF() {
 
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–'); if (parts.length < 2) return;
+    const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
     if (!von || !bis) return;
     von.setHours(0,0,0,0); bis.setHours(0,0,0,0);
@@ -4745,7 +4793,7 @@ function exportTuerschilderDocx() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -4797,7 +4845,7 @@ function exportTuerschilderWord() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -4974,7 +5022,7 @@ function exportTuerschilderCSV() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -5049,7 +5097,7 @@ function exportTuerschilder() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -5137,7 +5185,7 @@ function exportServietten() {
   bookingsData.forEach(function(b) {
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
     if (!konventRooms.includes(b.room)) return; // Nur Konvent-Gäste
-    var parts = b.dates.split('\u2013');
+    var parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     var von = parseDateDE(parts[0]);
     var bis = parseDateDE(parts[1]);
@@ -5245,7 +5293,7 @@ function exportNamensliste() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -5357,7 +5405,7 @@ function exportNamenslistePDF() {
   const guests = [];
   bookingsData.forEach(b => {
     if (b.status === 'storniert') return;
-    const parts = b.dates.split('–'); if (parts.length < 2) return;
+    const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
     if (!von || !bis) return;
     von.setHours(0,0,0,0); bis.setHours(0,0,0,0);
@@ -5488,7 +5536,7 @@ function renderDailyOverview() {
 
   bookingsData.forEach(b => {
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -5630,7 +5678,7 @@ function findBookingConflicts() {
   });
   var parsed = [];
   active.forEach(function(b) {
-    var parts = b.dates.split('\u2013');
+    var parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     var von = parseDateDE(parts[0]);
     var bis = parseDateDE(parts[1]);
@@ -5669,7 +5717,7 @@ function exportICS() {
 
   let events = '';
   bookings.forEach(b => {
-    const parts = b.dates.split('–');
+    const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
     const von = parseDateDE(parts[0]);
     const bis = parseDateDE(parts[1]);
@@ -5715,7 +5763,7 @@ function getSpendenBookings() {
 }
 
 function getCheckoutDate(b) {
-  const parts = b.dates.split('\u2013');
+  const parts = splitDateRange(b.dates);
   if (parts.length >= 2) return parseDateDE(parts[1]);
   if (parts.length >= 1) return parseDateDE(parts[0]);
   return null;
