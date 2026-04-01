@@ -121,7 +121,16 @@ function saveData() {
   saveToIndexedDB(data);
   // 3. GitHub Sync (debounced, 3 Sekunden)
   if (GitHubSync.hasToken()) {
-    GitHubSync.saveData(data);
+    GitHubSync.saveData(data).then(function(result) {
+      if (result && result.conflict) {
+        console.warn('[Sync] Konflikt beim Speichern — lade aktuelle Version');
+        GitHubSync.loadData().then(function(loaded) {
+          if (loaded && loaded.data && loaded.data.bookings) {
+            mergeServerData(loaded.data);
+          }
+        });
+      }
+    });
   }
 }
 
@@ -636,7 +645,7 @@ function mergeServerData(serverData) {
 }
 
 // Alle 15 Sekunden pruefen
-setInterval(checkForUpdates, 15000);
+setInterval(checkForUpdates, 45000);
 // Sofort pruefen wenn Tab/App sichtbar wird
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible') checkForUpdates();
