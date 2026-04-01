@@ -8,6 +8,8 @@ window.onerror = function(msg, url, line, col, error) {
     '</div>');
 };
 
+console.log('[Gastmeister] App wird geladen...');
+
 // ========== jsPDF Workaround ==========
 // text() setzt intern die PDF-Fill-Farbe auf die Textfarbe.
 // setFillColor() überspringt die Ausgabe wenn jsPDF denkt die Farbe ist
@@ -469,8 +471,10 @@ function showPage(pageId) {
 }
 
 // ========== Sidebar Collapse ==========
-document.querySelector('.sidebar-collapse-btn').addEventListener('click', function() {
-  document.querySelector('.layout').classList.toggle('sidebar-collapsed');
+var _sidebarCollapseBtn = document.querySelector('.sidebar-collapse-btn');
+if (_sidebarCollapseBtn) _sidebarCollapseBtn.addEventListener('click', function() {
+  var layout = document.querySelector('.layout');
+  if (layout) layout.classList.toggle('sidebar-collapsed');
 });
 
 // Sidebar-Items: Enter-Taste unterstützen
@@ -5961,6 +5965,7 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
 });
 
 function saveGitHubTokenNew() {
+  console.log('[Gastmeister] Token speichern geklickt');
   var token = document.getElementById('githubTokenInput').value.trim();
   if (!token) { showToast('Bitte Token eingeben'); return; }
   GitHubSync.setToken(token);
