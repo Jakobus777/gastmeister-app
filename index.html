@@ -976,7 +976,7 @@ P. Thomas Müller OSB"></textarea>
 <script src="app.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.register('./sw.js').catch(function(err) { console.warn('[Gastmeister] SW Registrierung fehlgeschlagen:', err); });
   }
 </script>
 

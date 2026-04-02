@@ -1,8 +1,17 @@
 var GitHubSync = (function() {
   'use strict';
 
+  function fetchWithTimeout(url, options, timeoutMs) {
+    timeoutMs = timeoutMs || 15000;
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+    options = options || {};
+    options.signal = controller.signal;
+    return fetch(url, options).finally(function() { clearTimeout(timer); });
+  }
+
   var REPO_OWNER = 'Jakobus777';
-  var REPO_NAME = 'gastmeister';
+  var REPO_NAME = 'gastmeister-app';
   var DATA_FILE = 'gastmeister_data.json';
   var API_BASE = 'https://api.github.com';
   var TOKEN_KEY = 'gastmeister_github_token';
@@ -74,7 +83,7 @@ var GitHubSync = (function() {
 
   // Auth prüfen — GET /user
   function checkAuth() {
-    return fetch(API_BASE + '/user', { headers: _headers() })
+    return fetchWithTimeout(API_BASE + '/user', { headers: _headers() })
       .then(function(r) { return r.ok; })
       .catch(function() { return false; });
   }
@@ -90,7 +99,7 @@ var GitHubSync = (function() {
       hdrs['If-None-Match'] = _lastETag;
     }
 
-    return fetch(url, { headers: hdrs })
+    return fetchWithTimeout(url, { headers: hdrs })
       .then(function(r) {
         if (r.status === 304) return null;
         if (_checkRateLimit(r)) return null;
@@ -102,11 +111,13 @@ var GitHubSync = (function() {
         if (!fileInfo) return null; // 304
         _lastSHA = fileInfo.sha;
         // Content ist Base64-kodiert und kann Zeilenumbrüche enthalten
-        var content = atob(fileInfo.content.replace(/\n/g, ''));
-        // atob gibt Latin-1 zurück — für UTF-8 (Umlaute!) escape/decodeURIComponent verwenden
-        var decoded = decodeURIComponent(escape(content));
-        var data = JSON.parse(decoded);
-        return { data: data, sha: fileInfo.sha };
+        try {
+          var content = decodeURIComponent(escape(atob(fileInfo.content.replace(/\n/g, ''))));
+          return { data: JSON.parse(content), sha: fileInfo.sha };
+        } catch(e) {
+          console.error('[GitHubSync] Daten-Dekodierung fehlgeschlagen:', e);
+          return null;
+        }
       });
   }
 
@@ -121,7 +132,7 @@ var GitHubSync = (function() {
       hdrs['If-None-Match'] = _lastETag;
     }
 
-    return fetch(url, { headers: hdrs })
+    return fetchWithTimeout(url, { headers: hdrs })
       .then(function(r) {
         if (r.status === 304) return false;
         if (_checkRateLimit(r)) return null;
@@ -147,6 +158,9 @@ var GitHubSync = (function() {
       return Promise.resolve(false);
     }
     _isSaving = true;
+    var _savingTimeout = setTimeout(function() {
+      if (_isSaving) { _isSaving = false; console.warn('[GitHubSync] _isSaving timeout reset'); }
+    }, 30000);
 
     var url = API_BASE + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + DATA_FILE;
     var jsonStr = JSON.stringify(data, null, 2);
@@ -159,12 +173,13 @@ var GitHubSync = (function() {
       sha: _lastSHA
     };
 
-    return fetch(url, {
+    return fetchWithTimeout(url, {
       method: 'PUT',
       headers: _headers(),
       body: JSON.stringify(body)
     })
     .then(function(r) {
+      clearTimeout(_savingTimeout);
       _isSaving = false;
       if (_checkRateLimit(r)) return { error: 'rate-limited' };
       if (r.status === 409) {
@@ -190,6 +205,7 @@ var GitHubSync = (function() {
       return { success: true };
     })
     .catch(function(e) {
+      clearTimeout(_savingTimeout);
       _isSaving = false;
       console.error('[GitHubSync] Speichern fehlgeschlagen:', e);
       return { error: e.message };
@@ -198,10 +214,16 @@ var GitHubSync = (function() {
 
   // Debounced Save — führt _doSave erst 3 Sekunden nach letztem Aufruf aus
   function saveData(data) {
-    if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
-    _saveDebounceTimer = setTimeout(function() {
-      _doSave(data);
-    }, 3000);
+    return new Promise(function(resolve) {
+      if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
+      _saveDebounceTimer = setTimeout(function() {
+        _doSave(data).then(function(result) {
+          resolve(result);
+        }).catch(function(err) {
+          resolve({ error: err });
+        });
+      }, 3000);
+    });
   }
 
   function getLastSHA() { return _lastSHA; }

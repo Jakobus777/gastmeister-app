@@ -33,6 +33,16 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function activeBookings() {
+  return bookingsData.filter(function(b) { return b && !b.deletedAt; });
+}
+
+function safeCreateIcons() {
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    try { safeCreateIcons(); } catch(e) {}
+  }
+}
+
 // ========== Datum-Hilfsfunktionen ==========
 function splitDateRange(dates) {
   if (!dates) return ['', ''];
@@ -58,7 +68,9 @@ function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) {
+    console.error('[Gastmeister] localStorage Daten korrupt:', e);
+  }
   return null;
 }
 
@@ -67,10 +79,15 @@ const DATA_VERSION = 12;
 // ========== IndexedDB via Dexie.js ==========
 var gastmeisterDB = null;
 if (typeof Dexie !== 'undefined') {
-  gastmeisterDB = new Dexie('GastmeisterDB');
-  gastmeisterDB.version(1).stores({
-    appData: 'key' // key-value Store: key='main' → alle Daten
-  });
+  try {
+    gastmeisterDB = new Dexie('GastmeisterDB');
+    gastmeisterDB.version(1).stores({
+      appData: 'key' // key-value Store: key='main' → alle Daten
+    });
+  } catch(e) {
+    console.warn('[Gastmeister] IndexedDB nicht verfügbar:', e);
+    gastmeisterDB = null;
+  }
 }
 
 // IndexedDB laden (async, überschreibt localStorage-Daten falls vorhanden)
@@ -78,7 +95,7 @@ function loadFromIndexedDB(callback) {
   if (!gastmeisterDB) { callback(null); return; }
   gastmeisterDB.appData.get('main').then(function(record) {
     callback(record ? record.data : null);
-  }).catch(function() { callback(null); });
+  }).catch(function(err) { console.warn('[Gastmeister] IndexedDB laden fehlgeschlagen:', err); callback(null); });
 }
 
 // IndexedDB speichern (async, parallel zu localStorage)
@@ -126,7 +143,7 @@ function _initSync() {
 function saveData() {
   _dataDirty = true;
   invalidateBookingsDayCache();
-  const data = { bookings: bookingsData, guests: guestsData, dayGuests: dayGuestsData, mealOverrides: mealOverrides, version: DATA_VERSION };
+  const data = { bookings: bookingsData, guests: guestsData, dayGuests: dayGuestsData, mealOverrides: mealOverrides, version: DATA_VERSION, _savedAt: new Date().toISOString() };
   // 1. localStorage (synchron, sofort)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -147,7 +164,7 @@ function saveData() {
           }
         });
       }
-    });
+    }).catch(function(e) { console.warn('[Sync] Save fehlgeschlagen:', e); });
   }
 }
 
@@ -170,8 +187,11 @@ loadFromIndexedDB(function(idbData) {
   if (!idbData || !idbData.bookings) return;
   // Nicht überschreiben wenn der User bereits Änderungen gemacht hat
   if (_dataDirty) return;
-  // IndexedDB hat Vorrang wenn sie mehr Buchungen hat (= localStorage war limitiert)
-  if (idbData.bookings.length > bookingsData.length) {
+  // IndexedDB hat Vorrang wenn sie neuer ist (Timestamp-Vergleich), Fallback auf Länge
+  var localData = stored || {};
+  var idbIsNewer = idbData._savedAt && (!localData._savedAt || idbData._savedAt > localData._savedAt);
+  var idbHasMore = !idbData._savedAt && !localData._savedAt && idbData.bookings.length > bookingsData.length;
+  if (idbIsNewer || idbHasMore) {
     bookingsData.length = 0;
     idbData.bookings.forEach(function(b) { bookingsData.push(b); });
     if (idbData.guests) {
@@ -220,7 +240,7 @@ Object.keys(mealOverrides).forEach(function(key) {
     // Jahr aus zugehöriger Buchung ermitteln
     var year = new Date().getFullYear();
     var booking = bookingsData.find(function(b) {
-      return b.name === parts[0] && b.room === parts[1];
+      return !b.deletedAt && b.name === parts[0] && b.room === parts[1];
     });
     if (booking && booking.dates) {
       var match = booking.dates.match(/(\d{4})/);
@@ -260,6 +280,7 @@ _initSync().then(function syncFromGitHub() {
     mergeServerData(backup);
   }).catch(function(e) {
     console.warn('[Sync] GitHub-Abgleich fehlgeschlagen:', e);
+    showToast('Sync fehlgeschlagen – lokale Daten werden verwendet', 'warning');
   });
 });
 
@@ -292,6 +313,15 @@ function importBackupJSON(file) {
         }
         saveData();
         refreshAll();
+        var unknownRooms = [];
+        bookingsData.forEach(function(b) {
+          if (b.room && allRoomsList.indexOf(b.room) === -1 && unknownRooms.indexOf(b.room) === -1) {
+            unknownRooms.push(b.room);
+          }
+        });
+        if (unknownRooms.length > 0) {
+          showToast('Warnung: Unbekannte Zimmer im Import: ' + unknownRooms.join(', '), 'warning');
+        }
         showToast('Backup importiert (' + bookingsData.length + ' Buchungen)');
       } else {
         showToast('Unbekanntes Dateiformat');
@@ -347,6 +377,15 @@ function importFullBackup(data) {
 
   saveData();
   refreshAll();
+  var unknownRooms = [];
+  bookingsData.forEach(function(b) {
+    if (b.room && allRoomsList.indexOf(b.room) === -1 && unknownRooms.indexOf(b.room) === -1) {
+      unknownRooms.push(b.room);
+    }
+  });
+  if (unknownRooms.length > 0) {
+    showToast('Warnung: Unbekannte Zimmer im Import: ' + unknownRooms.join(', '), 'warning');
+  }
   showToast('Backup importiert (' + newBookings.length + ' Buchungen, ' + newGuests.length + ' Gäste)');
 }
 
@@ -379,7 +418,7 @@ function refreshAll() {
   if (pageId === 'page-backup') updateBackupStats();
   if (pageId === 'page-exporte') renderExportTable();
 
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 let currentBookingFilter = 'alle';
@@ -504,7 +543,7 @@ function showPage(pageId) {
   if (pageId === 'spenden') renderSpendenPage();
   if (pageId === 'backup') updateBackupStats();
   if (pageId === 'exporte') renderExportTable();
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 // ========== Sidebar Collapse ==========
@@ -527,6 +566,7 @@ document.querySelectorAll('.sidebar-item[role="button"]').forEach(function(item)
 // ========== Toast ==========
 function showToast(message, opts) {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = 'toast';
   // Icon
@@ -562,9 +602,17 @@ var lastDeletedBooking = null;
 var lastDeletedIndex = -1;
 
 function undoDeleteBooking() {
-  if (lastDeletedBooking) {
-    // Am Ende einfügen (sicher, auch wenn sich der Index verschoben hat)
-    bookingsData.push(lastDeletedBooking);
+  if (lastDeletedBooking && lastDeletedIndex >= 0) {
+    var original = bookingsData.find(function(b) { return b.id === lastDeletedBooking.id; });
+    if (original) {
+      delete original.deletedAt;
+      original.updatedAt = new Date().toISOString();
+    } else {
+      // Fallback: wenn Original nicht mehr im Array (unwahrscheinlich)
+      delete lastDeletedBooking.deletedAt;
+      lastDeletedBooking.updatedAt = new Date().toISOString();
+      bookingsData.push(lastDeletedBooking);
+    }
     lastDeletedBooking = null;
     lastDeletedIndex = -1;
     saveData();
@@ -592,6 +640,7 @@ setInterval(checkBackupStatus, 60000);
 
 // ========== Sync-Polling ==========
 var _localSyncVersion = 0;
+var _syncErrorCount = 0;
 
 async function checkForUpdates() {
   if (!GitHubSync.hasToken()) return;
@@ -601,8 +650,13 @@ async function checkForUpdates() {
       console.log('[Sync] Neue Version auf GitHub erkannt');
       await pullFromServer();
     }
+    _syncErrorCount = 0;
   } catch (e) {
-    // Netzwerkfehler still ignorieren
+    _syncErrorCount++;
+    if (_syncErrorCount >= 3) {
+      showToast('Sync nicht erreichbar – arbeite offline', 'warning');
+      _syncErrorCount = 0;
+    }
   }
 }
 
@@ -613,10 +667,13 @@ async function pullFromServer() {
     mergeServerData(result.data);
   } catch (e) {
     console.warn('[Sync] Pull fehlgeschlagen:', e);
+    showToast('Daten-Abgleich fehlgeschlagen', 'warning');
   }
 }
 
+var _isMerging = false;
 function mergeServerData(serverData) {
+  if (_isMerging) return; _isMerging = true;
   const serverBookings = serverData.bookings || [];
 
   // Index lokale Buchungen nach ID
@@ -649,12 +706,24 @@ function mergeServerData(serverData) {
   // Nicht-gematchte Buchungen mit ID behalten (lokale Aenderungen die noch nicht am Server sind)
 
   // Andere Daten mergen (guests, dayGuests, mealOverrides)
+  // Gäste mergen
   if (serverData.guests && serverData.guests.length > 0) {
-    if (serverData.guests.length !== guestsData.length) {
-      guestsData.length = 0;
-      serverData.guests.forEach(function(g) { guestsData.push(g); });
-      changed = true;
-    }
+    var localGuestById = {};
+    guestsData.forEach(function(g) { if (g.id) localGuestById[g.id] = g; });
+
+    serverData.guests.forEach(function(sg) {
+      if (!sg.id) return;
+      var lg = localGuestById[sg.id];
+      if (!lg) {
+        // Neuer Gast vom Server
+        guestsData.push(sg);
+        changed = true;
+      } else if (sg.updatedAt && (!lg.updatedAt || sg.updatedAt > lg.updatedAt)) {
+        // Server-Version ist neuer
+        Object.assign(lg, sg);
+        changed = true;
+      }
+    });
   }
   if (serverData.dayGuests && serverData.dayGuests.length > 0) {
     if (serverData.dayGuests.length !== dayGuestsData.length) {
@@ -674,13 +743,18 @@ function mergeServerData(serverData) {
     saveData();
     if (typeof refreshAll === 'function') refreshAll();
   }
+  _isMerging = false;
 }
 
-// Alle 15 Sekunden pruefen
-setInterval(checkForUpdates, 45000);
-// Sofort pruefen wenn Tab/App sichtbar wird
+// Alle 45 Sekunden pruefen, nur wenn Tab sichtbar
+var _syncInterval = setInterval(checkForUpdates, 45000);
 document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'visible') checkForUpdates();
+  if (document.visibilityState === 'visible') {
+    checkForUpdates();
+    if (!_syncInterval) _syncInterval = setInterval(checkForUpdates, 45000);
+  } else {
+    if (_syncInterval) { clearInterval(_syncInterval); _syncInterval = null; }
+  }
 });
 
 // KI-Analyse: nur Regex-Modus ohne Server
@@ -876,6 +950,7 @@ function populateVorlageBuchungen() {
   const sel = document.getElementById('vorlageBuchung');
   sel.innerHTML = '<option value="">Buchung wählen...</option>';
   bookingsData.forEach((b, i) => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
     const opt = document.createElement('option');
     opt.value = i;
@@ -932,7 +1007,7 @@ function showDayDetail(dateObj) {
 
   document.getElementById('dayDetailBody').innerHTML = html;
   openModal('modalDayDetail');
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 // ========== Belegungsvorschau ==========
@@ -1042,6 +1117,7 @@ function findCurrentGuest(roomName) {
   const now = new Date();
   for (const b of bookingsData) {
     if (!b || !b.room) continue;
+    if (b.deletedAt) continue;
     if (b.room !== roomName) continue;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') continue;
     const parts = splitDateRange(b.dates);
@@ -1127,7 +1203,7 @@ function showZimmerDetail(zimmer) {
     : '<span class="badge badge-belegt">Belegt</span>';
 
   // Find all bookings for this room
-  const roomBookings = bookingsData.filter(b => b.room === zimmer.name);
+  const roomBookings = bookingsData.filter(b => !b.deletedAt && b.room === zimmer.name);
 
   // Parse date string "DD.MM.YYYY" to Date
   function parseDate(str) {
@@ -1175,7 +1251,7 @@ function showZimmerDetail(zimmer) {
             <div class="zimmer-detail-guest-name">${escHtml(zimmer.guest)}${renderStammgastBadge(zimmer.guest)}</div>
             <div class="zimmer-detail-dates">
               <i data-lucide="calendar" style="width:13px;height:13px;"></i>
-              ${zimmer.guestDetail || ''}
+              ${escHtml(zimmer.guestDetail || '')}
             </div>
           </div>
         </li>
@@ -1205,7 +1281,7 @@ function showZimmerDetail(zimmer) {
               <i data-lucide="calendar" style="width:13px;height:13px;"></i>
               ${b.dates}
             </div>
-            <div class="zimmer-detail-meta">${escHtml(b.pers)}</div>${b.notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px;"><i data-lucide="sticky-note" style="width:11px;height:11px;"></i> ${escHtml(b.notes)}</div>` : ''}${renderActivityTags(b.activities)}${(() => { const pa = getGuestPastActivities(b.name); return pa.length > 0 ? '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Letzte Aktivitäten: ' + pa.join(', ') + '</div>' : ''; })()}
+            <div class="zimmer-detail-meta">${escHtml(b.pers)}</div>${b.notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px;"><i data-lucide="sticky-note" style="width:11px;height:11px;"></i> ${escHtml(b.notes)}</div>` : ''}${renderActivityTags(b.activities)}${(() => { const pa = getGuestPastActivities(b.name); return pa.length > 0 ? '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Letzte Aktivitäten: ' + pa.map(escHtml).join(', ') + '</div>' : ''; })()}
           </div>
         </li>`;
     });
@@ -1264,6 +1340,7 @@ function getGuestPattern(guestName) {
   const monthNamesDE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   const checkinMonths = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     const bName = b.name.toLowerCase();
     if (bName !== lowerName && !bName.includes(lowerName) && !lowerName.includes(bName)) return;
     const parts = splitDateRange(b.dates);
@@ -1296,6 +1373,7 @@ function getGuestPastBookingCount(guestName) {
   const lowerName = guestName.toLowerCase();
   let count = 0;
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status !== 'abgeschlossen') return;
     const bName = b.name.toLowerCase();
     if (bName === lowerName || bName.includes(lowerName) || lowerName.includes(bName)) count++;
@@ -1316,6 +1394,7 @@ function getGuestPastActivities(guestName) {
   today.setHours(0,0,0,0);
   const allActivities = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     const bName = b.name.toLowerCase();
     if (bName !== lowerName && !bName.includes(lowerName) && !lowerName.includes(bName)) return;
     if (!b.activities || b.activities.length === 0) return;
@@ -1451,7 +1530,7 @@ function renderBuchungen() {
 
 function updateBuchungenCount() {
   const sub = document.querySelector('#page-buchungen .page-subtitle');
-  const activeCount = bookingsData.filter(b => b && b.status && b.status !== 'abgeschlossen').length;
+  const activeCount = bookingsData.filter(b => b && !b.deletedAt && b.status && b.status !== 'abgeschlossen').length;
   if (sub) sub.textContent = activeCount + ' aktuelle/zukünftige Buchungen';
 }
 
@@ -1510,17 +1589,47 @@ function saveBuchung() {
     return;
   }
 
+  if (anreise >= abreise) {
+    showToast('Abreisedatum muss nach dem Anreisedatum liegen');
+    return;
+  }
+
+  // Conflict detection
+  const newVon = new Date(anreise);
+  const newBis = new Date(abreise);
+  newVon.setHours(CHECKIN_HOUR, 0, 0, 0);
+  newBis.setHours(CHECKOUT_HOUR, 0, 0, 0);
+
+  for (let i = 0; i < bookingsData.length; i++) {
+    const b = bookingsData[i];
+    if (b.room !== zimmer) continue;
+    if (b.status === 'storniert' || b.status === 'abgeschlossen' || b.deletedAt) continue;
+    const parts = splitDateRange(b.dates);
+    if (parts.length < 2) continue;
+    const bVon = parseDateDE(parts[0]);
+    const bBis = parseDateDE(parts[1]);
+    if (!bVon || !bBis) continue;
+    bVon.setHours(CHECKIN_HOUR, 0, 0, 0);
+    bBis.setHours(CHECKOUT_HOUR, 0, 0, 0);
+    if (bVon < newBis && bBis > newVon) {
+      const conflictDates = parts[0].trim().replace(/\.\d{4}$/, '.') + ' – ' + parts[1].trim();
+      showToast('Konflikt: ' + zimmer + ' ist belegt von ' + b.name + ' (' + conflictDates + ')');
+      return;
+    }
+  }
+
   const formatDate = (d) => {
     const parts = d.split('-');
     return parts[2] + '.' + parts[1] + '.' + parts[0];
   };
 
+  const validPersonen = Math.max(1, parseInt(personen) || 1);
   const newBooking = {
     id: generateId(),
     name: gast,
     room: zimmer,
     dates: formatDate(anreise) + ' – ' + formatDate(abreise),
-    pers: personen + ' Pers.',
+    pers: validPersonen + ' Pers.',
     status: status,
     updatedAt: new Date().toISOString(),
   };
@@ -1685,7 +1794,7 @@ function findBookingForRoomAndDay(roomName, dayDate) {
     if (!von || !bis) continue;
     von.setHours(0,0,0,0);
     bis.setHours(0,0,0,0);
-    if (day >= von.getTime() && day <= bis.getTime()) return b;
+    if (day >= von.getTime() && day < bis.getTime()) return b;
   }
   return null;
 }
@@ -1701,7 +1810,7 @@ function renderCalendar() {
   } else {
     generateMonthCalendar();
   }
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 function generateMonthCalendar() {
@@ -1799,6 +1908,8 @@ var _bookingsDayCacheVersion = 0;
 function invalidateBookingsDayCache() {
   _bookingsDayCacheVersion++;
   _bookingsDayCache = {};
+  _calCacheKey = '';
+  _calBookingCache = null;
 }
 
 function findAllBookingsForDay(dayDate) {
@@ -1817,7 +1928,7 @@ function findAllBookingsForDay(dayDate) {
     if (!von || !bis) continue;
     von.setHours(0,0,0,0);
     bis.setHours(0,0,0,0);
-    if (day >= von.getTime() && day <= bis.getTime()) results.push(b);
+    if (day >= von.getTime() && day < bis.getTime()) results.push(b);
   }
 
   _bookingsDayCache[key] = results;
@@ -1904,7 +2015,7 @@ function openBookingEditByIndex(idx) {
   }
 
   openModal('modalBuchungEdit');
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 function parseDEtoISO(deDate) {
@@ -1926,7 +2037,7 @@ function saveEditBuchung() {
   const personen = document.getElementById('editBuchungPersonen').value;
   const status = document.getElementById('editBuchungStatus').value;
   const notizen = document.getElementById('editBuchungNotizen').value.trim();
-  const spendeVal = parseFloat(document.getElementById('editBuchungSpende').value) || 0;
+  const spendeVal = Math.max(0, parseFloat(document.getElementById('editBuchungSpende').value) || 0);
 
   // Collect activities
   const activities = [];
@@ -1961,7 +2072,7 @@ function saveEditBuchung() {
       if (i === editingBookingIdx) continue;
       const b = bookingsData[i];
       if (b.room !== zimmer) continue;
-      if (b.status === 'storniert') continue;
+      if (b.status === 'storniert' || b.status === 'abgeschlossen' || b.deletedAt) continue;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) continue;
       const bVon = parseDateDE(parts[0]);
@@ -1994,10 +2105,11 @@ function saveEditBuchung() {
         }
       });
     }
+    var validEditPersonen = Math.max(1, parseInt(personen) || 1);
     bookingsData[editingBookingIdx].name = gast;
     bookingsData[editingBookingIdx].room = zimmer;
     bookingsData[editingBookingIdx].dates = dates;
-    bookingsData[editingBookingIdx].pers = personen + ' Pers.';
+    bookingsData[editingBookingIdx].pers = validEditPersonen + ' Pers.';
     bookingsData[editingBookingIdx].status = status;
     bookingsData[editingBookingIdx].notes = notizen || undefined;
     bookingsData[editingBookingIdx].activities = activities.length > 0 ? activities : undefined;
@@ -2005,10 +2117,11 @@ function saveEditBuchung() {
     bookingsData[editingBookingIdx].updatedAt = new Date().toISOString();
   } else {
     // Create new from calendar entry
+    var validNewPersonen = Math.max(1, parseInt(personen) || 1);
     const newB = {
       id: generateId(),
       name: gast, room: zimmer, dates: dates,
-      pers: personen + ' Pers.', status: status,
+      pers: validNewPersonen + ' Pers.', status: status,
       updatedAt: new Date().toISOString(),
     };
     if (notizen) newB.notes = notizen;
@@ -2258,6 +2371,7 @@ function syncGuestsFromBookings() {
   let added = 0;
   bookingsData.forEach(b => {
     if (!b || !b.name) return;
+    if (b.deletedAt) return;
     const bName = String(b.name).toLowerCase();
     const exists = guestsData.some(g => g && guestName(g).toLowerCase() === bName);
     if (!exists) {
@@ -2323,6 +2437,7 @@ function renderStatistikPage() {
   const previousSelection = dropdown.value;
   const allYears = new Set();
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -2356,6 +2471,7 @@ function renderStatistikPage() {
   const data = allRoomsList.map(room => {
     const bookedDates = new Set();
     bookingsData.forEach(b => {
+      if (b.deletedAt) return;
       if (b.room !== room) return;
       if (b.status === 'storniert') return;
       const parts = splitDateRange(b.dates);
@@ -2427,6 +2543,7 @@ function renderStatistikPage() {
       const yearRoomDates = new Set();
 
       bookingsData.forEach(b => {
+        if (b.deletedAt) return;
         if (b.status === 'storniert') return;
         const parts = splitDateRange(b.dates);
         if (parts.length < 2) return;
@@ -2466,7 +2583,7 @@ function renderStatistikPage() {
     vergleichContainer.innerHTML = tableHTML;
   }
 
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 // ========== E-Mail Analyse ==========
@@ -2631,12 +2748,14 @@ function parseEmailText(text) {
 
   // 2h) Nächte-Angabe: "3 Nächte" → Abreise berechnen
   if (result.anreise && !result.abreise) {
-    const naechte = text.match(/(\d+)\s*(?:nächte?|übernachtung(?:en)?|tage?)/i);
+    var naechteMatch = text.match(/(\d+)\s*(?:nächte?|übernachtung(?:en)?)/i);
+    var tageMatch = !naechteMatch ? text.match(/(\d+)\s*tage?/i) : null;
+    var naechte = naechteMatch ? parseInt(naechteMatch[1]) : (tageMatch ? Math.max(1, parseInt(tageMatch[1]) - 1) : null);
     if (naechte) {
       const von = parseDateDE(result.anreise);
       if (von) {
         const bis = new Date(von);
-        bis.setDate(bis.getDate() + parseInt(naechte[1]));
+        bis.setDate(bis.getDate() + naechte);
         result.abreise = pad2(bis.getDate()) + '.' + pad2(bis.getMonth() + 1) + '.' + bis.getFullYear();
       }
     }
@@ -2701,6 +2820,7 @@ function showEmailResult(result) {
     if (von && bis) {
       const free = allRoomsList.filter(room => {
         return !bookingsData.some(b => {
+          if (b.deletedAt) return false;
           if (b.room !== room || b.status === 'storniert') return false;
           const p = splitDateRange(b.dates);
           if (p.length < 2) return false;
@@ -2837,11 +2957,12 @@ function initExportPrint() {
 
 function exportDataCSV() {
   // CSV-Escape-Funktion
-  function esc(s) { return '"' + String(s || '').replace(/"/g, '""') + '"'; }
+  function esc(s) { return '"' + String(s || '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ') + '"'; }
 
   // Export guests and bookings as CSV
   let csv = 'Typ,Name,Zimmer,Zeitraum,Personen,Status,Spende,Aktivitäten,Notizen,Check-In,Check-Out\n';
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     const acts = (b.activities || []).join('; ');
     csv += 'Buchung,' + esc(b.name) + ',' + esc(b.room) + ',' + esc(b.dates) + ',' + esc(b.pers) + ',' + esc(b.status) + ',' + esc(b.spende || '') + ',' + esc(acts) + ',' + esc(b.notes || '') + ',' + (b.checkedIn ? 'Ja' : 'Nein') + ',' + (b.checkedOut ? 'Ja' : 'Nein') + '\n';
   });
@@ -2885,6 +3006,7 @@ function generateWeekXLSXRows(weekStart) {
     let kF=0, kM=0, kA=0;
 
     bookingsData.forEach(b => {
+      if (b.deletedAt) return;
       if (b.status === 'storniert') return;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
@@ -3068,6 +3190,7 @@ function exportKuecheXLSX() {
 
 // ========== Küchenliste PDF Export ==========
 function exportKuechePDF() {
+  if (!window.jspdf) { showToast('PDF-Export nicht verfügbar. Bitte Seite neu laden.', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -3092,6 +3215,7 @@ function exportKuechePDF() {
       const dateStr = pad2(day.getDate()) + '.' + pad2(day.getMonth()+1) + '.' + day.getFullYear();
       let kF=0, kM=0, kA=0;
       bookingsData.forEach(b => {
+        if (b.deletedAt) return;
         if (b.status === 'storniert') return;
         const parts = splitDateRange(b.dates); if (parts.length < 2) return;
         const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
@@ -3331,6 +3455,7 @@ function renderKuechenliste() {
     // Find all bookings active on this day
     const dayGuests = [];
     bookingsData.forEach(b => {
+      if (b.deletedAt) return;
       if (b.status === 'storniert') return;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
@@ -3648,6 +3773,7 @@ function showGuestHistory(guestName) {
   // Find all bookings for this guest (fuzzy match on name)
   const lowerName = guestName.toLowerCase();
   const guestBookings = bookingsData.filter(b => {
+    if (b.deletedAt) return false;
     const bName = b.name.toLowerCase();
     return bName === lowerName || bName.includes(lowerName) || lowerName.includes(bName);
   });
@@ -3808,7 +3934,7 @@ function updateZimmerDropdown() {
   allRoomsList.forEach(room => {
     const conflict = bookingsData.some(b => {
       if (b.room !== room) return false;
-      if (b.status === 'storniert') return false;
+      if (b.status === 'storniert' || b.status === 'abgeschlossen' || b.deletedAt) return false;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) return false;
       const bVon = parseDateDE(parts[0]);
@@ -4072,6 +4198,7 @@ function renderExportTable() {
 
     // Regular bookings
     bookingsData.forEach(b => {
+      if (b.deletedAt) return;
       if (b.status === 'storniert') return;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
@@ -4203,6 +4330,7 @@ function renderExportTable() {
     const firstDay = days[0], lastDayM = days[days.length-1];
 
     bookingsData.forEach(b => {
+      if (b.deletedAt) return;
       if (b.status === 'storniert') return;
       const parts = splitDateRange(b.dates);
       if (parts.length < 2) return;
@@ -4313,6 +4441,7 @@ function exportGaestelisteXLSX() {
   const konvent = [];
 
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -4438,6 +4567,7 @@ function exportGaestelisteXLSX() {
 
 // ========== Gästeliste Woche PDF Export ==========
 function exportGaestelistePDF() {
+  if (!window.jspdf) { showToast('PDF-Export nicht verfügbar. Bitte Seite neu laden.', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -4459,6 +4589,7 @@ function exportGaestelistePDF() {
   const konvent = [];
 
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
@@ -4615,6 +4746,7 @@ function exportGaestelisteMonatXLSX() {
   const konvent = [];
 
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -4727,6 +4859,7 @@ function exportGaestelisteMonatXLSX() {
 
 // ========== Gästeliste Monat PDF Export ==========
 function exportGaestelisteMonatPDF() {
+  if (!window.jspdf) { showToast('PDF-Export nicht verfügbar. Bitte Seite neu laden.', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -4751,6 +4884,7 @@ function exportGaestelisteMonatPDF() {
   const konvent = [];
 
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
@@ -4792,6 +4926,7 @@ function exportTuerschilderDocx() {
 
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -4844,6 +4979,7 @@ function exportTuerschilderWord() {
   // Collect guests
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -5021,6 +5157,7 @@ function exportTuerschilderCSV() {
 
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -5096,6 +5233,7 @@ function exportTuerschilder() {
   // Collect guests for this week
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -5117,6 +5255,7 @@ function exportTuerschilder() {
   guests.sort((a,b) => (a.von||0) - (b.von||0));
 
   // Generate PDF directly with jsPDF
+  if (!window.jspdf) { showToast('PDF-Export nicht verfügbar. Bitte Seite neu laden.', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   // A4 landscape: 297mm x 210mm, card: 148.5mm x 52.5mm
@@ -5183,6 +5322,7 @@ function exportServietten() {
 
   var konventRooms = ['Hospes I','Hospes II','Hospes III','Hospes VII','Hospes VIII','Hospes IX'];
   bookingsData.forEach(function(b) {
+    if (b.deletedAt) return;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
     if (!konventRooms.includes(b.room)) return; // Nur Konvent-Gäste
     var parts = splitDateRange(b.dates);
@@ -5292,6 +5432,7 @@ function exportNamensliste() {
 
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -5376,6 +5517,7 @@ function exportNamensliste() {
 
 // ========== Namensliste PDF Export ==========
 function exportNamenslistePDF() {
+  if (!window.jspdf) { showToast('PDF-Export nicht verfügbar. Bitte Seite neu laden.', 'error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -5404,6 +5546,7 @@ function exportNamenslistePDF() {
 
   const guests = [];
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert') return;
     const parts = splitDateRange(b.dates); if (parts.length < 2) return;
     const von = parseDateDE(parts[0]); const bis = parseDateDE(parts[1]);
@@ -5535,6 +5678,7 @@ function renderDailyOverview() {
   const checkinRoomsTomorrow = new Set();
 
   bookingsData.forEach(b => {
+    if (b.deletedAt) return;
     if (b.status === 'storniert' || b.status === 'abgeschlossen') return;
     const parts = splitDateRange(b.dates);
     if (parts.length < 2) return;
@@ -5593,7 +5737,7 @@ function renderDailyOverview() {
       const ciClass = b.checkedIn ? 'checkin-btn done' : 'checkin-btn';
       const ciText = b.checkedIn ? '✓ Eingecheckt' : 'Check-In';
       const pastActs = getGuestPastActivities(b.name);
-      const pastActsHtml = pastActs.length > 0 ? `<div style="font-size:11px;color:var(--text-muted);padding:0 0 2px 0;">Zuletzt: ${pastActs.join(', ')}</div>` : '';
+      const pastActsHtml = pastActs.length > 0 ? `<div style="font-size:11px;color:var(--text-muted);padding:0 0 2px 0;">Zuletzt: ${pastActs.map(escHtml).join(', ')}</div>` : '';
       anreisenHtml += `<div style="padding:4px 0;font-size:13px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font-weight:500;">${escHtml(b.name)}${renderStammgastBadge(b.name)}</span>
@@ -5613,8 +5757,8 @@ function renderDailyOverview() {
   } else {
     prepRooms.forEach(p => {
       prepHtml += `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:13px;">
-        <span style="font-weight:500;">${p.room}</span>
-        <span class="badge badge-anfrage" style="font-size:11px;padding:1px 8px;">Nächste Anreise: ${p.nextCheckin}</span>
+        <span style="font-weight:500;">${escHtml(p.room)}</span>
+        <span class="badge badge-anfrage" style="font-size:11px;padding:1px 8px;">Nächste Anreise: ${escHtml(p.nextCheckin)}</span>
       </div>`;
     });
   }
@@ -5674,7 +5818,7 @@ function renderDailyOverview() {
 // ========== Buchungskonflikte finden ==========
 function findBookingConflicts() {
   var active = bookingsData.filter(function(b) {
-    return b.status !== 'storniert' && b.status !== 'abgeschlossen';
+    return !b.deletedAt && b.status !== 'storniert' && b.status !== 'abgeschlossen';
   });
   var parsed = [];
   active.forEach(function(b) {
@@ -5715,6 +5859,8 @@ function exportICS() {
     return;
   }
 
+  function escICS(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+
   let events = '';
   bookings.forEach(b => {
     const parts = splitDateRange(b.dates);
@@ -5728,8 +5874,8 @@ function exportICS() {
     const bisExklusiv = new Date(bis);
     bisExklusiv.setDate(bisExklusiv.getDate() + 1);
     const dtend = bisExklusiv.getFullYear() + pad2(bisExklusiv.getMonth() + 1) + pad2(bisExklusiv.getDate());
-    const summary = b.name + ' - ' + b.room;
-    const description = 'Zimmer: ' + b.room + '\\nPersonen: ' + (parseInt(b.pers) || 1) + (b.notes ? '\\nNotizen: ' + b.notes.replace(/\n/g, '\\n') : '');
+    const summary = escICS(b.name + ' - ' + b.room);
+    const description = escICS('Zimmer: ' + b.room + '\nPersonen: ' + (parseInt(b.pers) || 1) + (b.notes ? '\nNotizen: ' + b.notes : ''));
 
     const uid = dtstart + '-' + encodeURIComponent(b.name) + '-' + encodeURIComponent(b.room) + '@gastmeister.stift-kremsmuenster';
     events += 'BEGIN:VEVENT\r\n';
@@ -5843,7 +5989,7 @@ function renderSpendenPage() {
   // Monthly chart
   renderSpendenMonthlyChart(filterYear);
 
-  lucide.createIcons();
+  safeCreateIcons();
 }
 
 function renderSpendenMonthlyChart(filterYear) {
@@ -6054,4 +6200,35 @@ function saveGitHubTokenNew() {
   });
 }
 
-lucide.createIcons();
+safeCreateIcons();
+
+// ========== Multi-Tab Sync ==========
+window.addEventListener('storage', function(e) {
+  if (e.key === STORAGE_KEY && e.newValue) {
+    try {
+      var externalData = JSON.parse(e.newValue);
+      if (externalData && externalData.bookings) {
+        bookingsData.length = 0;
+        externalData.bookings.forEach(function(b) { bookingsData.push(b); });
+        if (externalData.guests) {
+          guestsData.length = 0;
+          externalData.guests.forEach(function(g) { guestsData.push(g); });
+        }
+        showToast('Daten wurden in einem anderen Tab geändert – Ansicht aktualisiert', 'info');
+        if (typeof renderCurrentPage === 'function') renderCurrentPage();
+        else if (typeof showPage === 'function') showPage(currentPage);
+      }
+    } catch(err) {
+      console.warn('[MultiTab] Daten-Sync fehlgeschlagen:', err);
+    }
+  }
+});
+
+// ========== beforeunload: Daten sofort sichern ==========
+window.addEventListener('beforeunload', function() {
+  // Sofort in localStorage speichern (synchron, kein Debounce)
+  try {
+    var data = { bookings: bookingsData, guests: guestsData, _savedAt: new Date().toISOString() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {}
+});
