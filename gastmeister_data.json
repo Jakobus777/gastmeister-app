@@ -1,6 +1,16 @@
 {
   "bookings": [
     {
+      "id": "524ce4c1-e810-4e95-bef7-ffba6f85eb8d",
+      "name": "Brigitte Eckerstorfer",
+      "room": "Zimmer 1",
+      "dates": "02.04.2026 – 05.04.2026",
+      "pers": "1 Pers.",
+      "status": "bestaetigt",
+      "updatedAt": "2026-04-02T12:40:57.353Z",
+      "notes": "Mutter Abt Bernhard"
+    },
+    {
       "name": "Karin und Peter Obricht",
       "room": "Herberge",
       "dates": "15.05.2026 – 16.05.2026",
@@ -30525,10 +30535,16 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "Brigitte Eckerstorfer",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-02T12:40:00.820Z"
+  "_savedAt": "2026-04-02T12:40:57.510Z"
 }
