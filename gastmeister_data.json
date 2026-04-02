@@ -314,7 +314,8 @@
       "status": "bestaetigt",
       "notes": "Kloster auf Zeit",
       "id": "4600416b-8137-4558-b557-b6de99324a40",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-02T12:37:32.218Z",
+      "deletedAt": "2026-04-02T12:37:32.218Z"
     },
     {
       "name": "Dr. Solderer",
@@ -30529,5 +30530,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-02T12:37:04.625Z"
+  "_savedAt": "2026-04-02T12:37:32.218Z"
 }
