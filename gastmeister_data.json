@@ -373,7 +373,8 @@
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "597b638f-7c96-43ad-a521-b39fea02f9fc",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-02T12:48:12.342Z",
+      "deletedAt": "2026-04-02T12:48:12.342Z"
     },
     {
       "name": "Kloster auf Zeit",
@@ -30546,5 +30547,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-02T12:47:59.534Z"
+  "_savedAt": "2026-04-02T12:48:12.342Z"
 }
