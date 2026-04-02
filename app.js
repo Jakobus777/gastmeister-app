@@ -732,10 +732,16 @@ function mergeServerData(serverData) {
       changed = true;
     }
   }
-  if (serverData.mealOverrides && JSON.stringify(serverData.mealOverrides) !== JSON.stringify(mealOverrides)) {
-    Object.keys(mealOverrides).forEach(function(k) { delete mealOverrides[k]; });
-    Object.assign(mealOverrides, serverData.mealOverrides);
-    changed = true;
+  // mealOverrides mergen — lokal hat Priorität (User hat gerade geändert)
+  // Server-Overrides die lokal nicht existieren werden hinzugefügt
+  if (serverData.mealOverrides) {
+    var serverMeals = serverData.mealOverrides;
+    for (var key in serverMeals) {
+      if (!mealOverrides[key]) {
+        mealOverrides[key] = serverMeals[key];
+        changed = true;
+      }
+    }
   }
 
   if (changed) {
