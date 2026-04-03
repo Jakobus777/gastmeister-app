@@ -30563,18 +30563,7 @@
     }
   ],
   "dayGuests": [],
-  "mealOverrides": {
-    "Dr. Isabella Bruckner|Zimmer 4|31.03.2026": {
-      "f": true,
-      "m": true,
-      "a": false
-    },
-    "Doris Bartel|Zimmer 1|31.03.2026": {
-      "f": true,
-      "m": true,
-      "a": false
-    }
-  },
+  "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:29:36.199Z"
+  "_savedAt": "2026-04-03T15:06:31.049Z"
 }
