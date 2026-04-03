@@ -30593,8 +30593,43 @@
       "f": false,
       "m": false,
       "a": false
+    },
+    "Brigitte Eckerstorfer|Zimmer 1|02.04.2026": {
+      "f": false,
+      "m": false,
+      "a": true
+    },
+    "Dr. Scheidle|Zimmer 6|02.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "OAR Walter Aigner|Zimmer 3|02.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Dr. Solderer|Zimmer 5|02.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Angela Demattio|Gunther|02.04.2026": {
+      "f": false,
+      "m": true,
+      "a": true
+    },
+    "Dr. Georg Starzer|Zimmer 4|02.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Peter Riegl|Hospes I|02.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T12:16:29.234Z"
+  "_savedAt": "2026-04-03T12:16:41.713Z"
 }
