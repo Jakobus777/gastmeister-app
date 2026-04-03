@@ -237,7 +237,8 @@
       "status": "bestaetigt",
       "checkedIn": true,
       "id": "9e31e315-0685-4ea7-95db-d04bddfefb0e",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:08:12.390Z",
+      "deletedAt": "2026-04-03T15:08:12.390Z"
     },
     {
       "name": "Ioan Moga",
@@ -290,7 +291,8 @@
       "status": "bestaetigt",
       "checkedIn": true,
       "id": "aace0519-4b77-471d-a06f-a642d5dc1435",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:08:07.440Z",
+      "deletedAt": "2026-04-03T15:08:07.440Z"
     },
     {
       "name": "Johannes Seidl",
@@ -30613,8 +30615,38 @@
       "f": true,
       "m": false,
       "a": false
+    },
+    "Dr. Isabella Bruckner|Zimmer 4|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Doris Bartel|Zimmer 1|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Hans Gerold|Gunther|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Tatjana Lang|Zimmer 5|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Bernadette und Sigrid Karner|Zimmer 3|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Johannes Seidl|Zimmer 2|31.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:07:49.847Z"
+  "_savedAt": "2026-04-03T15:08:33.211Z"
 }
