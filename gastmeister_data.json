@@ -275,7 +275,8 @@
       "status": "bestaetigt",
       "checkedIn": true,
       "id": "fb51e4d7-035d-4d22-b7f1-d4667578a6ee",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T12:06:48.874Z",
+      "spende": 200
     },
     {
       "name": "Osterakademie",
@@ -30560,5 +30561,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:06:34.460Z"
+  "_savedAt": "2026-04-03T12:06:48.874Z"
 }
