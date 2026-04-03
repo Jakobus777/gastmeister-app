@@ -30688,8 +30688,13 @@
       "f": true,
       "m": false,
       "a": false
+    },
+    "Dr. Scheidle|Zimmer 6|05.04.2026": {
+      "f": true,
+      "m": true,
+      "a": false
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T12:17:12.194Z"
+  "_savedAt": "2026-04-03T12:17:17.547Z"
 }
