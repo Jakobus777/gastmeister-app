@@ -4,10 +4,10 @@
       "id": "a4937f4c-7be4-4e14-ac71-6d42de56c044",
       "name": "Eliene Santus",
       "room": "Zimmer 2",
-      "dates": "03.04.2026 – 05.04.2026",
+      "dates": "03.04.2026 – 06.04.2026",
       "pers": "1 Pers.",
       "status": "bestaetigt",
-      "updatedAt": "2026-04-03T12:04:35.196Z"
+      "updatedAt": "2026-04-03T12:05:01.404Z"
     },
     {
       "id": "524ce4c1-e810-4e95-bef7-ffba6f85eb8d",
@@ -30559,5 +30559,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:04:40.553Z"
+  "_savedAt": "2026-04-03T12:05:04.571Z"
 }
