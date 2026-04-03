@@ -144,6 +144,7 @@ function saveData() {
   _dataDirty = true;
   invalidateBookingsDayCache();
   const data = { bookings: bookingsData, guests: guestsData, dayGuests: dayGuestsData, mealOverrides: mealOverrides, version: DATA_VERSION, _savedAt: new Date().toISOString() };
+  console.log('[SaveData] mealOverrides Keys:', Object.keys(mealOverrides).length, Object.keys(mealOverrides).slice(0, 5));
   // 1. localStorage (synchron, sofort)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -3681,6 +3682,7 @@ function toggleMeal(el) {
   mealOverrides[key][meal] = !isActive;
   el.classList.toggle('active');
   el.classList.toggle('inactive');
+  console.log('[Küchenliste] Override gespeichert:', key, meal, '=', !isActive, 'Alle Overrides:', JSON.stringify(mealOverrides).substring(0, 500));
   saveData();
 
   // Update stats (recalculate totals)
