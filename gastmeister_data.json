@@ -265,7 +265,8 @@
       "status": "bestaetigt",
       "checkedIn": true,
       "id": "5e265703-0d5f-4743-9bce-4b7e07973c98",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T12:07:19.789Z",
+      "spende": 140
     },
     {
       "name": "Bernadette und Sigrid Karner",
@@ -30561,5 +30562,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:06:48.874Z"
+  "_savedAt": "2026-04-03T12:07:19.789Z"
 }
