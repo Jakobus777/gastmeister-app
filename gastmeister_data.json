@@ -1,6 +1,15 @@
 {
   "bookings": [
     {
+      "id": "b2d27f13-c9ab-4af9-9a3e-29899ebe8261",
+      "name": "Angela Heitzinger",
+      "room": "Gunther",
+      "dates": "08.06.2026 – 09.06.2026",
+      "pers": "1 Pers.",
+      "status": "bestaetigt",
+      "updatedAt": "2026-04-03T15:15:46.145Z"
+    },
+    {
       "id": "a4937f4c-7be4-4e14-ac71-6d42de56c044",
       "name": "Eliene Santus",
       "room": "Zimmer 2",
@@ -30562,6 +30571,12 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "Angela Heitzinger",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
@@ -30818,5 +30833,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:12:20.833Z"
+  "_savedAt": "2026-04-03T15:15:46.225Z"
 }
