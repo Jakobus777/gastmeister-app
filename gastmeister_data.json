@@ -30563,7 +30563,13 @@
     }
   ],
   "dayGuests": [],
-  "mealOverrides": {},
+  "mealOverrides": {
+    "Dr. Solderer|Zimmer 5|01.04.2026": {
+      "f": false,
+      "m": true,
+      "a": true
+    }
+  },
   "version": 12,
-  "_savedAt": "2026-04-03T12:26:40.694Z"
+  "_savedAt": "2026-04-03T12:27:35.868Z"
 }
