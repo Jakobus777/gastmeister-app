@@ -559,13 +559,14 @@
       "updatedAt": "2026-04-01T14:25:11.611Z"
     },
     {
-      "name": "Gemeinschaft Em.",
+      "name": "de Wailly",
       "room": "Zimmer 3",
       "dates": "17.04.2026 – 20.04.2026",
-      "pers": "1 Pers.",
+      "pers": "2 Pers.",
       "status": "bestaetigt",
       "id": "0e8ee19e-6891-48dd-ac5d-8daca39ec094",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:22:01.838Z",
+      "notes": "Gemeinschaft Emmanuel\n+ Baby und 2 jähre altes Kind"
     },
     {
       "name": "Bernd und Anne Zangger",
@@ -30598,6 +30599,12 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "de Wailly",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
@@ -30864,5 +30871,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:20:44.881Z"
+  "_savedAt": "2026-04-03T15:22:01.917Z"
 }
