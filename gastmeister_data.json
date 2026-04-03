@@ -152,7 +152,8 @@
       "status": "abgeschlossen",
       "checkedOut": true,
       "id": "a5a54a0e-16fa-48e5-882e-b4d6ff59c357",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T12:08:10.307Z",
+      "spende": 200
     },
     {
       "name": "Mark Sandbothe",
@@ -30563,5 +30564,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:07:33.841Z"
+  "_savedAt": "2026-04-03T12:08:10.307Z"
 }
