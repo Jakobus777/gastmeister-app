@@ -594,7 +594,8 @@
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "2e996b29-ddb5-4510-9f25-fcfa70033aa1",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:25:51.341Z",
+      "deletedAt": "2026-04-03T15:25:51.341Z"
     },
     {
       "name": "Familie Danzl",
@@ -30981,5 +30982,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:25:47.936Z"
+  "_savedAt": "2026-04-03T15:25:51.341Z"
 }
