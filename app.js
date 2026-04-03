@@ -203,8 +203,12 @@ loadFromIndexedDB(function(idbData) {
       idbData.dayGuests.forEach(function(d) { dayGuestsData.push(d); });
     }
     if (idbData.mealOverrides) {
-      Object.keys(mealOverrides).forEach(function(k) { delete mealOverrides[k]; });
-      Object.assign(mealOverrides, idbData.mealOverrides);
+      // IDB ergänzt nur fehlende Keys, lokale Overrides haben Priorität
+      for (var k in idbData.mealOverrides) {
+        if (!mealOverrides[k]) {
+          mealOverrides[k] = idbData.mealOverrides[k];
+        }
+      }
     }
     if (typeof refreshAll === 'function') refreshAll();
     console.log('IndexedDB-Daten geladen (' + bookingsData.length + ' Buchungen)');
@@ -6190,7 +6194,11 @@ function saveGitHubTokenNew() {
             result.data.bookings.forEach(function(b) { bookingsData.push(b); });
             if (result.data.guests) { guestsData.length = 0; result.data.guests.forEach(function(g) { guestsData.push(guestObj(g)); }); }
             if (result.data.dayGuests) { result.data.dayGuests.forEach(function(d) { dayGuestsData.push(d); }); }
-            if (result.data.mealOverrides) { Object.assign(mealOverrides, result.data.mealOverrides); }
+            if (result.data.mealOverrides) {
+              for (var k in result.data.mealOverrides) {
+                if (!mealOverrides[k]) mealOverrides[k] = result.data.mealOverrides[k];
+              }
+            }
             saveData();
           } else {
             mergeServerData(result.data);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gastmeister-v13';
+const CACHE_NAME = 'gastmeister-v14';
 const ASSETS = [
   './',
   './index.html',
