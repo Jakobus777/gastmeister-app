@@ -652,7 +652,8 @@
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "15851111-7f7a-4674-be8b-48277df7a695",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:25:47.936Z",
+      "deletedAt": "2026-04-03T15:25:47.936Z"
     },
     {
       "name": "Gemeinschaft Em.",
@@ -30980,5 +30981,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:25:44.365Z"
+  "_savedAt": "2026-04-03T15:25:47.936Z"
 }
