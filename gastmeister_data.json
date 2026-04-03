@@ -55,7 +55,8 @@
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "3c2b08a7-2534-4d30-87c4-2013c0739f5d",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T12:09:02.028Z",
+      "spende": 400
     },
     {
       "name": "Helmut Hafner",
@@ -30564,5 +30565,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:08:15.663Z"
+  "_savedAt": "2026-04-03T12:09:02.028Z"
 }
