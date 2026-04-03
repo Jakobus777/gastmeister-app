@@ -30633,8 +30633,33 @@
       "f": false,
       "m": false,
       "a": false
+    },
+    "Dr. Scheidle|Zimmer 6|03.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "OAR Walter Aigner|Zimmer 3|03.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Dr. Solderer|Zimmer 5|03.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Dr. Georg Starzer|Zimmer 4|03.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Peter Riegl|Hospes I|03.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T12:16:46.964Z"
+  "_savedAt": "2026-04-03T12:16:57.388Z"
 }
