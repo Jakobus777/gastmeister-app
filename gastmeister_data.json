@@ -597,13 +597,14 @@
       "updatedAt": "2026-04-01T14:25:11.611Z"
     },
     {
-      "name": "Gemeinschaft Em.",
+      "name": "Familie Danzl",
       "room": "Zimmer 5",
       "dates": "17.04.2026 – 20.04.2026",
-      "pers": "1 Pers.",
+      "pers": "2 Pers.",
       "status": "bestaetigt",
       "id": "6a00ea80-4b29-43a8-8ae9-6147c2602b63",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:23:27.804Z",
+      "notes": "Gemeinschaft Emmanuel\n+ 2 Kinder (Alter 2 und 3 Jahre)"
     },
     {
       "name": "Karin und Werner Reinalter",
@@ -641,7 +642,8 @@
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "0f447441-a188-4114-a2a9-d3a753339b71",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:23:50.350Z",
+      "deletedAt": "2026-04-03T15:23:50.350Z"
     },
     {
       "name": "Gemeinschaft Em.",
@@ -30605,6 +30607,12 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "Familie Danzl",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
@@ -30868,8 +30876,38 @@
       "f": true,
       "m": false,
       "a": false
+    },
+    "de Wailly|Zimmer 3|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Bernd und Anne Zangger|Zimmer 4|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Gemeinschaft Em.|Zimmer 2|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Familie Danzl|Zimmer 5|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Karin und Werner Reinalter|Zimmer 6|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Elias Zangger|Zimmer 1|20.04.2026": {
+      "f": true,
+      "m": false,
+      "a": false
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:22:01.917Z"
+  "_savedAt": "2026-04-03T15:24:23.484Z"
 }
