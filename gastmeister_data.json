@@ -30666,7 +30666,7 @@
     },
     "OAR Walter Aigner|Zimmer 3|05.04.2026": {
       "f": true,
-      "m": false,
+      "m": true,
       "a": false
     },
     "Dr. Solderer|Zimmer 5|05.04.2026": {
@@ -30676,5 +30676,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T12:10:29.059Z"
+  "_savedAt": "2026-04-03T12:10:37.757Z"
 }
