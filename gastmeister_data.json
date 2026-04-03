@@ -30563,7 +30563,58 @@
     }
   ],
   "dayGuests": [],
-  "mealOverrides": {},
+  "mealOverrides": {
+    "Dr. Isabella Bruckner|Zimmer 4|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Doris Bartel|Zimmer 1|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Hans Gerold|Gunther|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Tatjana Lang|Zimmer 5|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Bernadette und Sigrid Karner|Zimmer 3|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Superintendent Gerold Lehner|Hospes II|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Johannes Seidl|Zimmer 2|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Osterakademie|Hospes IX|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Ioan Moga|Hospes III|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    },
+    "Bischof Manfred Scheuer|Hospes I|30.03.2026": {
+      "f": true,
+      "m": false,
+      "a": false
+    }
+  },
   "version": 12,
-  "_savedAt": "2026-04-03T15:06:31.049Z"
+  "_savedAt": "2026-04-03T15:07:49.847Z"
 }
