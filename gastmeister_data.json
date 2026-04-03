@@ -213,7 +213,8 @@
       "status": "bestaetigt",
       "checkedIn": true,
       "id": "9fb5a919-6575-4e84-aa22-8971d1ef86f1",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T12:07:33.841Z",
+      "spende": 100
     },
     {
       "name": "Hans Gerold",
@@ -30562,5 +30563,5 @@
   "dayGuests": [],
   "mealOverrides": {},
   "version": 12,
-  "_savedAt": "2026-04-03T12:07:19.789Z"
+  "_savedAt": "2026-04-03T12:07:33.841Z"
 }
