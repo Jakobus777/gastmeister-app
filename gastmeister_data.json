@@ -622,13 +622,14 @@
       "updatedAt": "2026-04-01T14:25:11.611Z"
     },
     {
-      "name": "Gemeinschaft Em.",
+      "name": "Elias Zangger",
       "room": "Zimmer 1",
       "dates": "17.04.2026 – 20.04.2026",
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "412e52f1-9c70-458f-8e36-7d7ddef17d63",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:19:08.845Z",
+      "notes": "Gemeinschaft Emmanuel"
     },
     {
       "name": "Gemeinschaft Em.",
@@ -30577,6 +30578,12 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "Elias Zangger",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
@@ -30843,5 +30850,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:16:07.353Z"
+  "_savedAt": "2026-04-03T15:19:08.941Z"
 }
