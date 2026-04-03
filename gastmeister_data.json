@@ -605,13 +605,14 @@
       "updatedAt": "2026-04-01T14:25:11.611Z"
     },
     {
-      "name": "Gemeinschaft Em.",
+      "name": "Karin und Werner Reinalter",
       "room": "Zimmer 6",
       "dates": "17.04.2026 – 20.04.2026",
       "pers": "1 Pers.",
       "status": "bestaetigt",
       "id": "3f7f886e-082b-4dd4-918e-d76361d01882",
-      "updatedAt": "2026-04-01T14:25:11.611Z"
+      "updatedAt": "2026-04-03T15:20:44.787Z",
+      "notes": "Karin und Werner Reinalter"
     },
     {
       "name": "Gemeinschaft Em.",
@@ -30591,6 +30592,12 @@
       "email": "",
       "telefon": "",
       "notizen": ""
+    },
+    {
+      "name": "Karin und Werner Reinalter",
+      "email": "",
+      "telefon": "",
+      "notizen": ""
     }
   ],
   "dayGuests": [],
@@ -30857,5 +30864,5 @@
     }
   },
   "version": 12,
-  "_savedAt": "2026-04-03T15:19:50.153Z"
+  "_savedAt": "2026-04-03T15:20:44.881Z"
 }
