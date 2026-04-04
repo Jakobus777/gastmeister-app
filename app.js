@@ -26,21 +26,11 @@ function checkLogin() {
   var errEl = document.getElementById('loginError');
   errEl.style.display = 'none';
 
-  // Passwort-Check mit lokalem Server oder via relative URL
-  fetch('http://localhost:9847/check-password', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({password: pwd})
-  }).catch(function() {
-    // Wenn localhost nicht erreichbar (iPhone via Cloudflare): relative URL
-    return fetch('/check-password', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password: pwd})
-    });
-  }).then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
+  var PASSWORT_HASH = '1decd0eb4a29b74f4bf1a66290e8f78b61feb2b6212d86b6834a8a1924d94733';
+
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd)).then(function(buf) {
+    var hash = Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    if (hash === PASSWORT_HASH) {
       sessionStorage.setItem('gastmeister_logged_in', '1');
       document.getElementById('loginScreen').style.display = 'none';
       _isLoggedIn = true;
@@ -49,9 +39,6 @@ function checkLogin() {
       document.getElementById('loginError').style.display = 'block';
       document.getElementById('loginPasswordInput').select();
     }
-  }).catch(function(err) {
-    console.error('Login Error:', err);
-    document.getElementById('loginError').style.display = 'block';
   });
 }
 
@@ -264,7 +251,10 @@ function saveData() {
   }
   // 2. IndexedDB (async, kein Limit)
   saveToIndexedDB(data);
-  // GitHub Sync deaktiviert für lokalen Betrieb
+  // 3. GitHub Sync (async, debounced 3s)
+  if (typeof GitHubSync !== 'undefined' && GitHubSync.hasToken()) {
+    GitHubSync.saveData(data);
+  }
 }
 
 // Load stored data — migrate from any older version, never discard user data
