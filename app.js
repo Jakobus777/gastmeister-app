@@ -643,13 +643,17 @@ function undoDeleteBooking() {
 // ========== Backup-Status (GitHub) ==========
 function checkBackupStatus() {
   if (!GitHubSync.hasToken()) {
-    document.getElementById('backupDot').className = 'backup-dot offline';
-    document.getElementById('backupLabel').textContent = 'GitHub nicht verbunden';
+    var dotEl = document.getElementById('backupDot');
+    var lblEl = document.getElementById('backupLabel');
+    if (dotEl) dotEl.className = 'backup-dot offline';
+    if (lblEl) lblEl.textContent = 'GitHub nicht verbunden';
     return;
   }
   GitHubSync.checkAuth().then(function(ok) {
-    document.getElementById('backupDot').className = 'backup-dot ' + (ok ? 'online' : 'offline');
-    document.getElementById('backupLabel').textContent = ok ? 'GitHub Sync aktiv' : 'GitHub Fehler!';
+    var d = document.getElementById('backupDot');
+    var l = document.getElementById('backupLabel');
+    if (d) d.className = 'backup-dot ' + (ok ? 'online' : 'offline');
+    if (l) l.textContent = ok ? 'GitHub Sync aktiv' : 'GitHub Fehler!';
   });
 }
 checkBackupStatus();
@@ -1763,8 +1767,8 @@ function generateCalendar() {
 }
 
 // Pre-filtered booking cache for calendar performance
-let _calBookingCache = null;
-let _calCacheKey = '';
+var _calBookingCache = null;
+var _calCacheKey = '';
 
 function getCalBookingCache(weekStart, weekEnd) {
   const key = weekStart.getTime() + '-' + weekEnd.getTime();
