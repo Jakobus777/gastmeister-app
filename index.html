@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="Gastmeister" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data: blob:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data: blob:;" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -23,6 +23,23 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+<!-- Login Screen -->
+<div id="loginScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#1a1a2e; z-index:9999; font-family:sans-serif;">
+  <div style="background:#16213e; padding:40px; border-radius:16px; width:320px; max-width:90vw; box-shadow:0 20px 60px rgba(0,0,0,0.5); text-align:center;">
+    <div style="font-size:48px; margin-bottom:16px;">🏠</div>
+    <h1 style="color:#e2e8f0; font-size:24px; margin:0 0 8px 0;">Gastmeister</h1>
+    <p style="color:#94a3b8; font-size:14px; margin:0 0 32px 0;">Bitte Passwort eingeben</p>
+    <input id="loginPasswordInput" type="password" placeholder="Passwort"
+      style="width:100%; padding:14px; border:2px solid #334155; border-radius:10px; background:#0f172a; color:#e2e8f0; font-size:16px; box-sizing:border-box; margin-bottom:12px; outline:none;"
+      onkeydown="if(event.key==='Enter') checkLogin()">
+    <div id="loginError" style="color:#ef4444; font-size:13px; margin-bottom:12px; display:none;">Falsches Passwort</div>
+    <button onclick="checkLogin()"
+      style="width:100%; padding:14px; background:#3b82f6; color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;">
+      Anmelden
+    </button>
+  </div>
+</div>
 
 <!-- MOBILE HEADER -->
 <header class="mobile-header">
@@ -103,10 +120,6 @@
     </div>
     </nav>
 
-    <div class="backup-status" id="backupStatus" title="Backup-Server Status">
-      <span class="backup-dot" id="backupDot"></span>
-      <span id="backupLabel">Backup prüfen...</span>
-    </div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar">J</div>
       <div class="sidebar-user-info">
@@ -632,18 +645,32 @@ P. Thomas Müller OSB"></textarea>
         </button>
       </div>
 
-      <div class="backup-card mb-20">
-        <h2><i data-lucide="github" style="width:18px;height:18px;vertical-align:middle;"></i> GitHub-Sync</h2>
-        <p>Synchronisiert Buchungsdaten zwischen allen Geräten (Mac, iPhone) über GitHub. Änderungen werden automatisch hochgeladen.</p>
-        <div id="githubSyncStatus" style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);"></div>
+        <h2><i data-lucide="lock" style="width:18px;height:18px;vertical-align:middle;"></i> App-Passwort ändern</h2>
+        <p>Ändern Sie das Passwort, das beim Öffnen der App erforderlich ist.</p>
         <div class="form-group">
-          <label class="form-label" for="githubTokenInput">GitHub Personal Access Token</label>
-          <input type="password" class="form-input" id="githubTokenInput" placeholder="GitHub Personal Access Token" />
+          <label class="form-label" for="oldPasswordInput">Altes Passwort</label>
+          <input type="password" class="form-input" id="oldPasswordInput" placeholder="Altes Passwort" />
         </div>
-        <button class="btn btn-primary" onclick="saveGitHubTokenNew()">
+        <div class="form-group">
+          <label class="form-label" for="newPasswordInput">Neues Passwort (min. 4 Zeichen)</label>
+          <input type="password" class="form-input" id="newPasswordInput" placeholder="Neues Passwort" />
+        </div>
+        <button class="btn btn-primary" onclick="changeAppPassword()">
+          <i data-lucide="save" style="width:16px;height:16px;"></i> Passwort ändern
+        </button>
+      </div>
+
+      <div class="backup-card mb-20">
+        <h2><i data-lucide="server" style="width:18px;height:18px;vertical-align:middle;"></i> Backup-Server (Optional)</h2>
+        <p>Für Zugriff vom iPhone über Cloudflare-Tunnel: Geben Sie den Server-Token vom Mac ein oder er wird automatisch geholt.</p>
+        <div class="form-group">
+          <label class="form-label" for="serverTokenInput">Backup-Server-Token</label>
+          <input type="password" class="form-input" id="serverTokenInput" placeholder="Backup-Server-Token (vom Mac)" />
+        </div>
+        <button class="btn btn-primary" onclick="saveServerTokenNew()">
           <i data-lucide="save" style="width:16px;height:16px;"></i> Token speichern
         </button>
-        <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">Token erstellen: GitHub → Settings → Developer Settings → Fine-grained tokens → Repo: gastmeister, Contents: Read+Write</p>
+        <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">Token zu finden auf dem Mac: Einstellungen (Zahnrad) → Backup → Server-Token anzeigen</p>
       </div>
 
       <div class="backup-hint">
@@ -972,12 +999,13 @@ P. Thomas Müller OSB"></textarea>
 
 <script src="tuerschild_template.js"></script>
 <script src="kelch_serviette.js"></script>
-<script src="github-sync.js"></script>
+
 <script src="app.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(function(err) { console.warn('[Gastmeister] SW Registrierung fehlgeschlagen:', err); });
   }
+  showLoginIfNeeded();
 </script>
 
 </body>
